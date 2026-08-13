@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/usuarios")
 public class UsuarioController {
@@ -22,7 +24,12 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<Usuario> cadastrar(@RequestBody Usuario usuario) {
+    public ResponseEntity<?> cadastrar(@RequestBody Usuario usuario) {
+        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("erro", "E-mail já cadastrado"));
+        }
+
         usuario.setId(null);
         usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
         Usuario usuarioCriado = usuarioRepository.save(usuario);
