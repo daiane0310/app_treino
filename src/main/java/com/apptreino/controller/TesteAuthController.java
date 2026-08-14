@@ -15,4 +15,11 @@ public class TesteAuthController {
     public ResponseEntity<Map<String, String>> testarAutenticacao() {
         return ResponseEntity.ok(Map.of("mensagem", "Token válido"));
     }
+
+    @GetMapping("/teste-admin")
+    public ResponseEntity<Map<String, String>> testarAcessoAdmin() {
+        return ResponseEntity.ok(Map.of(
+                "mensagem", "Acesso de administrador autorizado"
+        ));
+    }
 }
