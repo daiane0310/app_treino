@@ -1,5 +1,6 @@
 package com.apptreino.controller;
 
+import com.apptreino.dto.AlunoResumoResponse;
 import com.apptreino.dto.VinculoPersonalAlunoResponse;
 import com.apptreino.model.VinculoPersonalAluno;
 import com.apptreino.service.VinculoPersonalAlunoService;
@@ -8,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/personais")
@@ -37,6 +40,15 @@ public class VinculoPersonalAlunoController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new VinculoPersonalAlunoResponse(vinculo));
+    }
+
+    @GetMapping("/me/alunos")
+    public ResponseEntity<List<AlunoResumoResponse>> listarMeusAlunos(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                vinculoService.listarAlunosDoPersonalAutenticado(authentication)
+        );
     }
 
     @ExceptionHandler(NoSuchElementException.class)

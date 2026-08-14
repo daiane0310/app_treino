@@ -1,5 +1,6 @@
 package com.apptreino.service;
 
+import com.apptreino.dto.AlunoResumoResponse;
 import com.apptreino.model.TipoUsuario;
 import com.apptreino.model.Usuario;
 import com.apptreino.model.VinculoPersonalAluno;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
+import java.util.List;
 
 @Service
 public class VinculoPersonalAlunoService {
@@ -64,6 +66,23 @@ public class VinculoPersonalAlunoService {
         } catch (DataIntegrityViolationException exception) {
             throw new IllegalStateException("Aluno já possui vínculo com um personal", exception);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<AlunoResumoResponse> listarAlunosDoPersonalAutenticado(
+            Authentication authentication
+    ) {
+        Usuario personal = usuarioRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new NoSuchElementException("Usuário autenticado não encontrado"));
+
+        if (personal.getTipo() != TipoUsuario.PERSONAL) {
+            throw new AccessDeniedException("Acesso permitido somente para PERSONAL");
+        }
+
+        return vinculoRepository.findAllByPersonalId(personal.getId())
+                .stream()
+                .map(vinculo -> new AlunoResumoResponse(vinculo.getAluno()))
+                .toList();
     }
 
     private void validarPermissao(Usuario solicitante, Usuario personal) {
