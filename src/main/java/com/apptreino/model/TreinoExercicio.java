@@ -1,0 +1,104 @@
+package com.apptreino.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table(
+        name = "treino_exercicios",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_treino_exercicio_ordem",
+                columnNames = {"treino_id", "ordem"}
+        )
+)
+public class TreinoExercicio {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "treino_id", nullable = false)
+    private Treino treino;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "exercicio_id", nullable = false)
+    private Exercicio exercicio;
+
+    @Column(nullable = false)
+    private Integer ordem;
+
+    @Column(name = "series_planejadas")
+    private Integer seriesPlanejadas;
+
+    @Column(name = "repeticoes_planejadas")
+    private String repeticoesPlanejadas;
+
+    @Column(name = "carga_planejada", precision = 10, scale = 2)
+    private BigDecimal cargaPlanejada;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacoes;
+
+    public TreinoExercicio() {
+    }
+
+    public TreinoExercicio(
+            Treino treino,
+            Exercicio exercicio,
+            Integer ordem,
+            Integer seriesPlanejadas,
+            String repeticoesPlanejadas,
+            BigDecimal cargaPlanejada,
+            String observacoes
+    ) {
+        this.treino = treino;
+        this.exercicio = exercicio;
+        this.ordem = ordem;
+        this.seriesPlanejadas = seriesPlanejadas;
+        this.repeticoesPlanejadas = repeticoesPlanejadas;
+        this.cargaPlanejada = cargaPlanejada;
+        this.observacoes = observacoes;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Treino getTreino() {
+        return treino;
+    }
+
+    public Exercicio getExercicio() {
+        return exercicio;
+    }
+
+    public Integer getOrdem() {
+        return ordem;
+    }
+
+    public Integer getSeriesPlanejadas() {
+        return seriesPlanejadas;
+    }
+
+    public String getRepeticoesPlanejadas() {
+        return repeticoesPlanejadas;
+    }
+
+    public BigDecimal getCargaPlanejada() {
+        return cargaPlanejada;
+    }
+
+    public String getObservacoes() {
+        return observacoes;
+    }
+}
