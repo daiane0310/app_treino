@@ -36,6 +36,12 @@ public class SecurityConfig {
                         .hasRole("PERSONAL")
                         .requestMatchers(HttpMethod.POST, "/personais/*/alunos/*")
                         .hasAnyRole("ADMIN", "PERSONAL")
+                        .requestMatchers(HttpMethod.POST, "/alunos/*/treinos")
+                        .hasAnyRole("ADMIN", "PERSONAL")
+                        .requestMatchers(HttpMethod.GET, "/alunos/me/treinos")
+                        .hasRole("ALUNO")
+                        .requestMatchers(HttpMethod.GET, "/alunos/*/treinos")
+                        .hasAnyRole("ADMIN", "PERSONAL")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
