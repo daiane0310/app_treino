@@ -5,6 +5,7 @@ import com.apptreino.dto.ExecucaoSerieRequest;
 import com.apptreino.dto.ExecucaoSerieResponse;
 import com.apptreino.dto.ExecucaoTreinoDetalheResponse;
 import com.apptreino.dto.ExecucaoTreinoResponse;
+import com.apptreino.dto.ExecucaoTreinoResumoResponse;
 import com.apptreino.dto.RegistrarExecucaoExercicioRequest;
 import com.apptreino.model.ExecucaoExercicio;
 import com.apptreino.model.ExecucaoSerie;
@@ -19,6 +20,7 @@ import com.apptreino.repository.ExecucaoTreinoRepository;
 import com.apptreino.repository.TreinoExercicioRepository;
 import com.apptreino.repository.TreinoRepository;
 import com.apptreino.repository.UsuarioRepository;
+import com.apptreino.repository.VinculoPersonalAlunoRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ public class ExecucaoTreinoService {
     private final TreinoRepository treinoRepository;
     private final TreinoExercicioRepository treinoExercicioRepository;
     private final UsuarioRepository usuarioRepository;
+    private final VinculoPersonalAlunoRepository vinculoRepository;
 
     public ExecucaoTreinoService(
             ExecucaoTreinoRepository execucaoTreinoRepository,
@@ -46,7 +49,8 @@ public class ExecucaoTreinoService {
             ExecucaoSerieRepository execucaoSerieRepository,
             TreinoRepository treinoRepository,
             TreinoExercicioRepository treinoExercicioRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            VinculoPersonalAlunoRepository vinculoRepository
     ) {
         this.execucaoTreinoRepository = execucaoTreinoRepository;
         this.execucaoExercicioRepository = execucaoExercicioRepository;
@@ -54,6 +58,7 @@ public class ExecucaoTreinoService {
         this.treinoRepository = treinoRepository;
         this.treinoExercicioRepository = treinoExercicioRepository;
         this.usuarioRepository = usuarioRepository;
+        this.vinculoRepository = vinculoRepository;
     }
 
     @Transactional
@@ -163,6 +168,42 @@ public class ExecucaoTreinoService {
     }
 
     @Transactional(readOnly = true)
+    public List<ExecucaoTreinoResumoResponse> listarHistoricoProprio(
+            Authentication authentication
+    ) {
+        Usuario aluno = buscarAlunoAutenticado(authentication);
+        return buscarHistoricoDoAluno(aluno.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExecucaoTreinoResumoResponse> listarHistoricoAluno(
+            Long alunoId,
+            Authentication authentication
+    ) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Usuario aluno = usuarioRepository.findById(alunoId)
+                .orElseThrow(() -> new NoSuchElementException("Aluno não encontrado"));
+
+        if (aluno.getTipo() != TipoUsuario.ALUNO) {
+            throw new IllegalArgumentException("Usuário informado não é aluno");
+        }
+
+        if (solicitante.getTipo() != TipoUsuario.ADMIN) {
+            if (solicitante.getTipo() != TipoUsuario.PERSONAL
+                    || !vinculoRepository.existsByPersonalIdAndAlunoId(
+                            solicitante.getId(),
+                            alunoId
+                    )) {
+                throw new AccessDeniedException(
+                        "Personal não possui vínculo com o aluno informado"
+                );
+            }
+        }
+
+        return buscarHistoricoDoAluno(alunoId);
+    }
+
+    @Transactional(readOnly = true)
     public ExecucaoTreinoDetalheResponse detalharExecucao(
             Long execucaoId,
             Authentication authentication
@@ -170,11 +211,8 @@ public class ExecucaoTreinoService {
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
         ExecucaoTreino execucao = buscarExecucao(execucaoId);
 
-        if (solicitante.getTipo() != TipoUsuario.ADMIN) {
-            if (solicitante.getTipo() != TipoUsuario.ALUNO
-                    || !execucao.getAluno().getId().equals(solicitante.getId())) {
-                throw new AccessDeniedException("Usuário não possui acesso a esta execução");
-            }
+        if (!podeVisualizarExecucao(solicitante, execucao)) {
+            throw new AccessDeniedException("Usuário não possui acesso a esta execução");
         }
 
         List<ExecucaoExercicioResponse> exercicios = execucaoExercicioRepository
@@ -193,6 +231,30 @@ public class ExecucaoTreinoService {
                 .toList();
 
         return new ExecucaoTreinoDetalheResponse(execucao, exercicios);
+    }
+
+    private List<ExecucaoTreinoResumoResponse> buscarHistoricoDoAluno(Long alunoId) {
+        return execucaoTreinoRepository.findAllByAlunoIdOrderByIniciadoEmDesc(alunoId)
+                .stream()
+                .map(ExecucaoTreinoResumoResponse::new)
+                .toList();
+    }
+
+    private boolean podeVisualizarExecucao(Usuario solicitante, ExecucaoTreino execucao) {
+        if (solicitante.getTipo() == TipoUsuario.ADMIN) {
+            return true;
+        }
+
+        Long alunoId = execucao.getAluno().getId();
+        if (solicitante.getTipo() == TipoUsuario.ALUNO) {
+            return alunoId.equals(solicitante.getId());
+        }
+
+        return solicitante.getTipo() == TipoUsuario.PERSONAL
+                && vinculoRepository.existsByPersonalIdAndAlunoId(
+                        solicitante.getId(),
+                        alunoId
+                );
     }
 
     private Usuario buscarAlunoAutenticado(Authentication authentication) {

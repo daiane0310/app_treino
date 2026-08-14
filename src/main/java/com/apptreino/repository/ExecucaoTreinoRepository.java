@@ -4,6 +4,8 @@ import com.apptreino.model.ExecucaoTreino;
 import com.apptreino.model.StatusExecucaoTreino;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface ExecucaoTreinoRepository extends JpaRepository<ExecucaoTreino, Long> {
 
     boolean existsByTreinoIdAndAlunoIdAndStatus(
@@ -11,4 +13,6 @@ public interface ExecucaoTreinoRepository extends JpaRepository<ExecucaoTreino, 
             Long alunoId,
             StatusExecucaoTreino status
     );
+
+    List<ExecucaoTreino> findAllByAlunoIdOrderByIniciadoEmDesc(Long alunoId);
 }
