@@ -1,8 +1,10 @@
 package com.apptreino.controller;
 
 import com.apptreino.dto.LoginRequest;
+import com.apptreino.dto.LoginResponse;
 import com.apptreino.model.Usuario;
 import com.apptreino.repository.UsuarioRepository;
+import com.apptreino.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,10 +21,17 @@ import java.util.Optional;
 public class AuthController {
 
     private final UsuarioRepository usuarioRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthController(UsuarioRepository usuarioRepository) {
+    public AuthController(
+            UsuarioRepository usuarioRepository,
+            BCryptPasswordEncoder passwordEncoder,
+            JwtService jwtService
+    ) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/login")
@@ -36,12 +45,14 @@ public class AuthController {
         }
 
         Usuario usuario = usuarioEncontrado.get();
+        String token = jwtService.gerarToken(usuario);
 
-        return ResponseEntity.ok(Map.of(
-                "id", usuario.getId(),
-                "nome", usuario.getNome(),
-                "email", usuario.getEmail(),
-                "tipo", usuario.getTipo()
+        return ResponseEntity.ok(new LoginResponse(
+                usuario.getId(),
+                usuario.getNome(),
+                usuario.getEmail(),
+                usuario.getTipo(),
+                token
         ));
     }
 }
