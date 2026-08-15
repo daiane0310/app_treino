@@ -2,6 +2,7 @@ package com.apptreino.service;
 
 import com.apptreino.dto.TreinoCreateRequest;
 import com.apptreino.dto.TreinoResponse;
+import com.apptreino.dto.TreinoUpdateRequest;
 import com.apptreino.model.TipoUsuario;
 import com.apptreino.model.Treino;
 import com.apptreino.model.Usuario;
@@ -83,6 +84,27 @@ public class TreinoService {
         return converterParaResponse(treinos);
     }
 
+    @Transactional
+    public TreinoResponse atualizarTreino(
+            Long treinoId,
+            TreinoUpdateRequest request,
+            Authentication authentication
+    ) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Treino treino = treinoRepository.findById(treinoId)
+                .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
+
+        validarPermissaoDeEdicao(solicitante, treino);
+        validarNome(request == null ? null : request.getNome());
+        treino.atualizar(
+                request.getNome().trim(),
+                request.getDescricao(),
+                request.isAtivo()
+        );
+
+        return new TreinoResponse(treinoRepository.saveAndFlush(treino));
+    }
+
     @Transactional(readOnly = true)
     public List<TreinoResponse> listarTreinosDoAlunoAutenticado(Authentication authentication) {
         Usuario aluno = buscarUsuarioAutenticado(authentication);
@@ -124,6 +146,21 @@ public class TreinoService {
         }
 
         throw new AccessDeniedException("Aluno não está vinculado ao personal autenticado");
+    }
+
+    private void validarPermissaoDeEdicao(Usuario solicitante, Treino treino) {
+        if (solicitante.getTipo() == TipoUsuario.ADMIN) {
+            return;
+        }
+
+        if (solicitante.getTipo() != TipoUsuario.PERSONAL
+                || !solicitante.getId().equals(treino.getPersonal().getId())
+                || !vinculoRepository.existsByPersonalIdAndAlunoId(
+                        solicitante.getId(),
+                        treino.getAluno().getId()
+                )) {
+            throw new AccessDeniedException("Treino não pertence ao personal autenticado");
+        }
     }
 
     private void validarNome(String nome) {

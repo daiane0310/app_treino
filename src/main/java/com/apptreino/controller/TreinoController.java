@@ -2,6 +2,7 @@ package com.apptreino.controller;
 
 import com.apptreino.dto.TreinoCreateRequest;
 import com.apptreino.dto.TreinoResponse;
+import com.apptreino.dto.TreinoUpdateRequest;
 import com.apptreino.service.TreinoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,8 +12,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestController
-@RequestMapping("/alunos")
 public class TreinoController {
 
     private final TreinoService treinoService;
@@ -29,7 +29,7 @@ public class TreinoController {
         this.treinoService = treinoService;
     }
 
-    @PostMapping("/{alunoId}/treinos")
+    @PostMapping("/alunos/{alunoId}/treinos")
     public ResponseEntity<TreinoResponse> criarTreino(
             @PathVariable Long alunoId,
             @RequestBody TreinoCreateRequest request,
@@ -39,7 +39,7 @@ public class TreinoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(treino);
     }
 
-    @GetMapping("/{alunoId}/treinos")
+    @GetMapping("/alunos/{alunoId}/treinos")
     public ResponseEntity<List<TreinoResponse>> listarTreinosDoAluno(
             @PathVariable Long alunoId,
             Authentication authentication
@@ -47,11 +47,22 @@ public class TreinoController {
         return ResponseEntity.ok(treinoService.listarTreinosDoAluno(alunoId, authentication));
     }
 
-    @GetMapping("/me/treinos")
+    @GetMapping("/alunos/me/treinos")
     public ResponseEntity<List<TreinoResponse>> listarMeusTreinos(
             Authentication authentication
     ) {
         return ResponseEntity.ok(treinoService.listarTreinosDoAlunoAutenticado(authentication));
+    }
+
+    @PutMapping("/treinos/{treinoId}")
+    public ResponseEntity<TreinoResponse> atualizarTreino(
+            @PathVariable Long treinoId,
+            @RequestBody TreinoUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                treinoService.atualizarTreino(treinoId, request, authentication)
+        );
     }
 
     @ExceptionHandler(NoSuchElementException.class)
