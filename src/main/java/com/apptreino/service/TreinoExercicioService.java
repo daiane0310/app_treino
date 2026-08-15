@@ -2,6 +2,7 @@ package com.apptreino.service;
 
 import com.apptreino.dto.TreinoExercicioCreateRequest;
 import com.apptreino.dto.TreinoExercicioResponse;
+import com.apptreino.dto.TreinoExercicioUpdateRequest;
 import com.apptreino.model.Exercicio;
 import com.apptreino.model.TipoUsuario;
 import com.apptreino.model.Treino;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 
 @Service
@@ -90,7 +92,51 @@ public class TreinoExercicioService {
                     treinoExercicioRepository.saveAndFlush(treinoExercicio)
             );
         } catch (DataIntegrityViolationException exception) {
-            throw new IllegalStateException("Ordem já está ocupada neste treino", exception);
+            throw converterConflitoDeOrdem(exception);
+        }
+    }
+
+    @Transactional
+    public TreinoExercicioResponse atualizarPrescricao(
+            Long treinoId,
+            Long treinoExercicioId,
+            TreinoExercicioUpdateRequest request,
+            Authentication authentication
+    ) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Treino treino = buscarTreino(treinoId);
+        TreinoExercicio treinoExercicio = treinoExercicioRepository
+                .findByIdAndTreinoId(treinoExercicioId, treinoId)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Prescrição não encontrada neste treino"
+                ));
+
+        validarAdministracaoDoTreino(solicitante, treino);
+        validarAtualizacao(request);
+
+        if (!request.getOrdem().equals(treinoExercicio.getOrdem())
+                && treinoExercicioRepository.existsByTreinoIdAndOrdemAndIdNot(
+                        treinoId,
+                        request.getOrdem(),
+                        treinoExercicioId
+                )) {
+            throw new IllegalStateException("Ordem já está ocupada neste treino");
+        }
+
+        treinoExercicio.atualizarPrescricao(
+                request.getOrdem(),
+                request.getSeriesPlanejadas(),
+                normalizarTextoOpcional(request.getRepeticoesPlanejadas()),
+                request.getCargaPlanejada(),
+                request.getObservacoes()
+        );
+
+        try {
+            return new TreinoExercicioResponse(
+                    treinoExercicioRepository.saveAndFlush(treinoExercicio)
+            );
+        } catch (DataIntegrityViolationException exception) {
+            throw converterConflitoDeOrdem(exception);
         }
     }
 
@@ -174,6 +220,42 @@ public class TreinoExercicioService {
         if (carga != null && carga.signum() < 0) {
             throw new IllegalArgumentException("Carga planejada não pode ser negativa");
         }
+    }
+
+    private void validarAtualizacao(TreinoExercicioUpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Dados da prescrição são obrigatórios");
+        }
+
+        if (request.getOrdem() == null || request.getOrdem() <= 0) {
+            throw new IllegalArgumentException("Ordem deve ser maior que zero");
+        }
+
+        if (request.getSeriesPlanejadas() != null && request.getSeriesPlanejadas() <= 0) {
+            throw new IllegalArgumentException("Séries planejadas devem ser maiores que zero");
+        }
+
+        if (request.getRepeticoesPlanejadas() != null
+                && request.getRepeticoesPlanejadas().isBlank()) {
+            throw new IllegalArgumentException("Repetições planejadas não podem ser vazias");
+        }
+
+        BigDecimal carga = request.getCargaPlanejada();
+        if (carga != null && carga.signum() < 0) {
+            throw new IllegalArgumentException("Carga planejada não pode ser negativa");
+        }
+    }
+
+    private RuntimeException converterConflitoDeOrdem(
+            DataIntegrityViolationException exception
+    ) {
+        String mensagem = exception.getMostSpecificCause().getMessage();
+        if (mensagem != null
+                && mensagem.toLowerCase(Locale.ROOT)
+                .contains("uk_treino_exercicio_ordem")) {
+            return new IllegalStateException("Ordem já está ocupada neste treino", exception);
+        }
+        return exception;
     }
 
     private String normalizarTextoOpcional(String texto) {

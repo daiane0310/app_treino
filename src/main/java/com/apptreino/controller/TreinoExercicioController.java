@@ -2,6 +2,7 @@ package com.apptreino.controller;
 
 import com.apptreino.dto.TreinoExercicioCreateRequest;
 import com.apptreino.dto.TreinoExercicioResponse;
+import com.apptreino.dto.TreinoExercicioUpdateRequest;
 import com.apptreino.service.TreinoExercicioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,6 +51,21 @@ public class TreinoExercicioController {
         return ResponseEntity.ok(
                 treinoExercicioService.listarExercicios(treinoId, authentication)
         );
+    }
+
+    @PutMapping("/{treinoId}/exercicios/{treinoExercicioId}")
+    public ResponseEntity<TreinoExercicioResponse> atualizarPrescricao(
+            @PathVariable Long treinoId,
+            @PathVariable Long treinoExercicioId,
+            @RequestBody TreinoExercicioUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(treinoExercicioService.atualizarPrescricao(
+                treinoId,
+                treinoExercicioId,
+                request,
+                authentication
+        ));
     }
 
     @ExceptionHandler(NoSuchElementException.class)

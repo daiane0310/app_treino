@@ -70,6 +70,20 @@ public class TreinoExercicio {
         this.observacoes = observacoes;
     }
 
+    public void atualizarPrescricao(
+            Integer ordem,
+            Integer seriesPlanejadas,
+            String repeticoesPlanejadas,
+            BigDecimal cargaPlanejada,
+            String observacoes
+    ) {
+        this.ordem = ordem;
+        this.seriesPlanejadas = seriesPlanejadas;
+        this.repeticoesPlanejadas = repeticoesPlanejadas;
+        this.cargaPlanejada = cargaPlanejada;
+        this.observacoes = observacoes;
+    }
+
     public Long getId() {
         return id;
     }
