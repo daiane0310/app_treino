@@ -43,6 +43,12 @@ public class Exercicio {
         this.ativo = ativo;
     }
 
+    public void atualizar(String nome, String descricao, boolean ativo) {
+        this.nome = nome;
+        this.descricao = descricao;
+        this.ativo = ativo;
+    }
+
     @PrePersist
     public void preencherDatas() {
         LocalDateTime agora = LocalDateTime.now();
