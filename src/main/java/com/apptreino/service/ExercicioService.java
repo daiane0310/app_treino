@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Service
@@ -27,6 +28,14 @@ public class ExercicioService {
     ) {
         this.exercicioRepository = exercicioRepository;
         this.usuarioRepository = usuarioRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExercicioResponse> listarExerciciosAtivos() {
+        return exercicioRepository.findAllByAtivoTrueOrderByNomeAscIdAsc()
+                .stream()
+                .map(ExercicioResponse::new)
+                .toList();
     }
 
     @Transactional

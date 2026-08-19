@@ -1,6 +1,7 @@
 package com.apptreino.config;
 
 import com.apptreino.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,6 +11,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -21,8 +28,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource
+    ) throws Exception {
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -45,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/alunos/me/execucoes")
                         .hasRole("ALUNO")
                         .requestMatchers(HttpMethod.GET, "/alunos/*/execucoes")
+                        .hasAnyRole("ADMIN", "PERSONAL")
+                        .requestMatchers(HttpMethod.GET, "/exercicios")
                         .hasAnyRole("ADMIN", "PERSONAL")
                         .requestMatchers(HttpMethod.POST, "/exercicios")
                         .hasAnyRole("ADMIN", "PERSONAL")
@@ -75,6 +88,36 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins}") String allowedOriginsProperty
+    ) {
+        List<String> allowedOrigins = Arrays.stream(allowedOriginsProperty.split(",", -1))
+                .map(String::trim)
+                .toList();
+
+        if (allowedOrigins.isEmpty() || allowedOrigins.stream().anyMatch(String::isBlank)) {
+            throw new IllegalArgumentException("A lista de origens CORS não pode ser vazia");
+        }
+        if (allowedOrigins.stream().anyMatch(origin -> origin.contains("*"))) {
+            throw new IllegalArgumentException("Origens CORS não podem conter wildcard");
+        }
+        if (allowedOrigins.stream().anyMatch(origin -> origin.endsWith("/"))) {
+            throw new IllegalArgumentException("Origens CORS não podem terminar com barra");
+        }
+
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
