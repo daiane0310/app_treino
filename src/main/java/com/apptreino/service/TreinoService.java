@@ -106,6 +106,16 @@ public class TreinoService {
     }
 
     @Transactional(readOnly = true)
+    public TreinoResponse buscarTreinoPorId(Long treinoId, Authentication authentication) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Treino treino = treinoRepository.findById(treinoId)
+                .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
+
+        validarPermissaoDeConsulta(solicitante, treino);
+        return new TreinoResponse(treino);
+    }
+
+    @Transactional(readOnly = true)
     public List<TreinoResponse> listarTreinosDoAlunoAutenticado(Authentication authentication) {
         Usuario aluno = buscarUsuarioAutenticado(authentication);
 
@@ -161,6 +171,28 @@ public class TreinoService {
                 )) {
             throw new AccessDeniedException("Treino não pertence ao personal autenticado");
         }
+    }
+
+    private void validarPermissaoDeConsulta(Usuario solicitante, Treino treino) {
+        if (solicitante.getTipo() == TipoUsuario.ADMIN) {
+            return;
+        }
+
+        if (solicitante.getTipo() == TipoUsuario.PERSONAL
+                && solicitante.getId().equals(treino.getPersonal().getId())
+                && vinculoRepository.existsByPersonalIdAndAlunoId(
+                        solicitante.getId(),
+                        treino.getAluno().getId()
+                )) {
+            return;
+        }
+
+        if (solicitante.getTipo() == TipoUsuario.ALUNO
+                && solicitante.getId().equals(treino.getAluno().getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("Usuário sem permissão para consultar este treino");
     }
 
     private void validarNome(String nome) {

@@ -65,6 +65,14 @@ public class TreinoController {
         );
     }
 
+    @GetMapping("/treinos/{treinoId}")
+    public ResponseEntity<TreinoResponse> buscarTreinoPorId(
+            @PathVariable Long treinoId,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(treinoService.buscarTreinoPorId(treinoId, authentication));
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, String>> tratarNaoEncontrado(NoSuchElementException exception) {
         return respostaErro(HttpStatus.NOT_FOUND, exception.getMessage());
