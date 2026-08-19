@@ -88,7 +88,7 @@ public class ExecucaoTreinoService {
         );
 
         List<ExecucaoExercicio> snapshots = treinoExercicioRepository
-                .findAllByTreinoIdOrderByOrdemAsc(treinoId)
+                .findAllByTreinoIdAndAtivoTrueOrderByOrdemAsc(treinoId)
                 .stream()
                 .map(prescricao -> new ExecucaoExercicio(execucao, prescricao))
                 .toList();

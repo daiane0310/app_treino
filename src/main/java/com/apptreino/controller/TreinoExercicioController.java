@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -66,6 +67,20 @@ public class TreinoExercicioController {
                 request,
                 authentication
         ));
+    }
+
+    @DeleteMapping("/{treinoId}/exercicios/{treinoExercicioId}")
+    public ResponseEntity<Void> desativarPrescricao(
+            @PathVariable Long treinoId,
+            @PathVariable Long treinoExercicioId,
+            Authentication authentication
+    ) {
+        treinoExercicioService.desativarPrescricao(
+                treinoId,
+                treinoExercicioId,
+                authentication
+        );
+        return ResponseEntity.noContent().build();
     }
 
     @ExceptionHandler(NoSuchElementException.class)

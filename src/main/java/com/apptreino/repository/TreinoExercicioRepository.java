@@ -8,15 +8,17 @@ import java.util.Optional;
 
 public interface TreinoExercicioRepository extends JpaRepository<TreinoExercicio, Long> {
 
-    List<TreinoExercicio> findAllByTreinoIdOrderByOrdemAsc(Long treinoId);
+    List<TreinoExercicio> findAllByTreinoIdAndAtivoTrueOrderByOrdemAsc(Long treinoId);
 
-    boolean existsByTreinoIdAndOrdem(Long treinoId, Integer ordem);
+    boolean existsByTreinoIdAndOrdemAndAtivoTrue(Long treinoId, Integer ordem);
 
-    boolean existsByTreinoIdAndExercicioId(Long treinoId, Long exercicioId);
+    boolean existsByTreinoIdAndExercicioIdAndAtivoTrue(Long treinoId, Long exercicioId);
 
     Optional<TreinoExercicio> findByIdAndTreinoId(Long id, Long treinoId);
 
-    boolean existsByTreinoIdAndOrdemAndIdNot(
+    Optional<TreinoExercicio> findByIdAndTreinoIdAndAtivoTrue(Long id, Long treinoId);
+
+    boolean existsByTreinoIdAndOrdemAndAtivoTrueAndIdNot(
             Long treinoId,
             Integer ordem,
             Long id

@@ -8,18 +8,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table(
-        name = "treino_exercicios",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_treino_exercicio_ordem",
-                columnNames = {"treino_id", "ordem"}
-        )
-)
+@Table(name = "treino_exercicios")
 public class TreinoExercicio {
 
     @Id
@@ -48,6 +41,9 @@ public class TreinoExercicio {
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;
+
+    @Column(nullable = false)
+    private boolean ativo = true;
 
     public TreinoExercicio() {
     }
@@ -84,6 +80,10 @@ public class TreinoExercicio {
         this.observacoes = observacoes;
     }
 
+    public void desativar() {
+        this.ativo = false;
+    }
+
     public Long getId() {
         return id;
     }
@@ -114,5 +114,9 @@ public class TreinoExercicio {
 
     public String getObservacoes() {
         return observacoes;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
     }
 }

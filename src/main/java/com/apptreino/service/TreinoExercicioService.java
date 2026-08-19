@@ -66,14 +66,17 @@ public class TreinoExercicioService {
             throw new IllegalArgumentException("Exercício deve estar ativo");
         }
 
-        if (treinoExercicioRepository.existsByTreinoIdAndExercicioId(
+        if (treinoExercicioRepository.existsByTreinoIdAndExercicioIdAndAtivoTrue(
                 treinoId,
                 request.getExercicioId()
         )) {
             throw new IllegalStateException("Exercício já está presente neste treino");
         }
 
-        if (treinoExercicioRepository.existsByTreinoIdAndOrdem(treinoId, request.getOrdem())) {
+        if (treinoExercicioRepository.existsByTreinoIdAndOrdemAndAtivoTrue(
+                treinoId,
+                request.getOrdem()
+        )) {
             throw new IllegalStateException("Ordem já está ocupada neste treino");
         }
 
@@ -92,7 +95,7 @@ public class TreinoExercicioService {
                     treinoExercicioRepository.saveAndFlush(treinoExercicio)
             );
         } catch (DataIntegrityViolationException exception) {
-            throw converterConflitoDeOrdem(exception);
+            throw converterConflitoDeUnicidade(exception);
         }
     }
 
@@ -106,7 +109,7 @@ public class TreinoExercicioService {
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
         Treino treino = buscarTreino(treinoId);
         TreinoExercicio treinoExercicio = treinoExercicioRepository
-                .findByIdAndTreinoId(treinoExercicioId, treinoId)
+                .findByIdAndTreinoIdAndAtivoTrue(treinoExercicioId, treinoId)
                 .orElseThrow(() -> new NoSuchElementException(
                         "Prescrição não encontrada neste treino"
                 ));
@@ -115,7 +118,7 @@ public class TreinoExercicioService {
         validarAtualizacao(request);
 
         if (!request.getOrdem().equals(treinoExercicio.getOrdem())
-                && treinoExercicioRepository.existsByTreinoIdAndOrdemAndIdNot(
+                && treinoExercicioRepository.existsByTreinoIdAndOrdemAndAtivoTrueAndIdNot(
                         treinoId,
                         request.getOrdem(),
                         treinoExercicioId
@@ -136,7 +139,29 @@ public class TreinoExercicioService {
                     treinoExercicioRepository.saveAndFlush(treinoExercicio)
             );
         } catch (DataIntegrityViolationException exception) {
-            throw converterConflitoDeOrdem(exception);
+            throw converterConflitoDeUnicidade(exception);
+        }
+    }
+
+    @Transactional
+    public void desativarPrescricao(
+            Long treinoId,
+            Long treinoExercicioId,
+            Authentication authentication
+    ) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Treino treino = buscarTreino(treinoId);
+        TreinoExercicio treinoExercicio = treinoExercicioRepository
+                .findByIdAndTreinoId(treinoExercicioId, treinoId)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Prescrição não encontrada neste treino"
+                ));
+
+        validarAdministracaoDoTreino(solicitante, treino);
+
+        if (treinoExercicio.isAtivo()) {
+            treinoExercicio.desativar();
+            treinoExercicioRepository.save(treinoExercicio);
         }
     }
 
@@ -149,7 +174,8 @@ public class TreinoExercicioService {
         Treino treino = buscarTreino(treinoId);
         validarVisualizacaoDoTreino(solicitante, treino);
 
-        return treinoExercicioRepository.findAllByTreinoIdOrderByOrdemAsc(treinoId)
+        return treinoExercicioRepository
+                .findAllByTreinoIdAndAtivoTrueOrderByOrdemAsc(treinoId)
                 .stream()
                 .map(TreinoExercicioResponse::new)
                 .toList();
@@ -246,14 +272,23 @@ public class TreinoExercicioService {
         }
     }
 
-    private RuntimeException converterConflitoDeOrdem(
+    private RuntimeException converterConflitoDeUnicidade(
             DataIntegrityViolationException exception
     ) {
         String mensagem = exception.getMostSpecificCause().getMessage();
-        if (mensagem != null
-                && mensagem.toLowerCase(Locale.ROOT)
-                .contains("uk_treino_exercicio_ordem")) {
+        if (mensagem == null) {
+            return exception;
+        }
+
+        String mensagemNormalizada = mensagem.toLowerCase(Locale.ROOT);
+        if (mensagemNormalizada.contains("uk_treino_exercicio_ordem_ativo")) {
             return new IllegalStateException("Ordem já está ocupada neste treino", exception);
+        }
+        if (mensagemNormalizada.contains("uk_treino_exercicio_exercicio_ativo")) {
+            return new IllegalStateException(
+                    "Exercício já está presente neste treino",
+                    exception
+            );
         }
         return exception;
     }
