@@ -1,6 +1,7 @@
 package com.apptreino.controller;
 
 import com.apptreino.dto.TreinoExercicioCreateRequest;
+import com.apptreino.dto.TreinoExercicioReordenarRequest;
 import com.apptreino.dto.TreinoExercicioResponse;
 import com.apptreino.dto.TreinoExercicioUpdateRequest;
 import com.apptreino.service.TreinoExercicioService;
@@ -52,6 +53,19 @@ public class TreinoExercicioController {
         return ResponseEntity.ok(
                 treinoExercicioService.listarExercicios(treinoId, authentication)
         );
+    }
+
+    @PutMapping("/{treinoId}/exercicios/ordem")
+    public ResponseEntity<List<TreinoExercicioResponse>> reordenarExercicios(
+            @PathVariable Long treinoId,
+            @RequestBody TreinoExercicioReordenarRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(treinoExercicioService.reordenarExercicios(
+                treinoId,
+                request,
+                authentication
+        ));
     }
 
     @PutMapping("/{treinoId}/exercicios/{treinoExercicioId}")

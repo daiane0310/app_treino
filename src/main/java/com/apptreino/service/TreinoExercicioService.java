@@ -1,6 +1,8 @@
 package com.apptreino.service;
 
 import com.apptreino.dto.TreinoExercicioCreateRequest;
+import com.apptreino.dto.TreinoExercicioOrdemItemRequest;
+import com.apptreino.dto.TreinoExercicioReordenarRequest;
 import com.apptreino.dto.TreinoExercicioResponse;
 import com.apptreino.dto.TreinoExercicioUpdateRequest;
 import com.apptreino.model.Exercicio;
@@ -20,9 +22,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 @Service
 public class TreinoExercicioService {
@@ -56,7 +63,7 @@ public class TreinoExercicioService {
         validarRequest(request);
 
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
-        Treino treino = buscarTreino(treinoId);
+        Treino treino = buscarTreinoComLock(treinoId);
         validarAdministracaoDoTreino(solicitante, treino);
 
         Exercicio exercicio = exercicioRepository.findById(request.getExercicioId())
@@ -107,7 +114,7 @@ public class TreinoExercicioService {
             Authentication authentication
     ) {
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
-        Treino treino = buscarTreino(treinoId);
+        Treino treino = buscarTreinoComLock(treinoId);
         TreinoExercicio treinoExercicio = treinoExercicioRepository
                 .findByIdAndTreinoIdAndAtivoTrue(treinoExercicioId, treinoId)
                 .orElseThrow(() -> new NoSuchElementException(
@@ -150,7 +157,7 @@ public class TreinoExercicioService {
             Authentication authentication
     ) {
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
-        Treino treino = buscarTreino(treinoId);
+        Treino treino = buscarTreinoComLock(treinoId);
         TreinoExercicio treinoExercicio = treinoExercicioRepository
                 .findByIdAndTreinoId(treinoExercicioId, treinoId)
                 .orElseThrow(() -> new NoSuchElementException(
@@ -163,6 +170,64 @@ public class TreinoExercicioService {
             treinoExercicio.desativar();
             treinoExercicioRepository.save(treinoExercicio);
         }
+    }
+
+    @Transactional
+    public List<TreinoExercicioResponse> reordenarExercicios(
+            Long treinoId,
+            TreinoExercicioReordenarRequest request,
+            Authentication authentication
+    ) {
+        Usuario solicitante = buscarUsuarioAutenticado(authentication);
+        Treino treino = buscarTreinoComLock(treinoId);
+        validarAdministracaoDoTreino(solicitante, treino);
+
+        List<TreinoExercicio> prescricoesAtivas = treinoExercicioRepository
+                .findAllByTreinoIdAndAtivoTrueOrderByOrdemAsc(treinoId);
+        Map<Long, Integer> ordensFinais = validarReordenacao(request, prescricoesAtivas);
+
+        if (prescricoesAtivas.isEmpty()) {
+            return List.of();
+        }
+
+        int quantidade = prescricoesAtivas.size();
+        int maiorOrdemAtual = prescricoesAtivas.stream()
+                .mapToInt(TreinoExercicio::getOrdem)
+                .max()
+                .orElse(0);
+        long baseTemporaria = Math.max((long) maiorOrdemAtual, (long) quantidade)
+                + quantidade
+                + 1L;
+        long maiorOrdemTemporaria = baseTemporaria + quantidade;
+
+        if (maiorOrdemTemporaria > Integer.MAX_VALUE) {
+            throw new IllegalStateException(
+                    "Não foi possível calcular ordens temporárias seguras"
+            );
+        }
+
+        for (int indice = 0; indice < quantidade; indice++) {
+            prescricoesAtivas.get(indice).atualizarOrdem(
+                    Math.toIntExact(baseTemporaria + indice + 1L)
+            );
+        }
+
+        try {
+            treinoExercicioRepository.saveAllAndFlush(prescricoesAtivas);
+
+            for (TreinoExercicio prescricao : prescricoesAtivas) {
+                prescricao.atualizarOrdem(ordensFinais.get(prescricao.getId()));
+            }
+
+            treinoExercicioRepository.saveAllAndFlush(prescricoesAtivas);
+        } catch (DataIntegrityViolationException exception) {
+            throw converterConflitoDeReordenacao(exception);
+        }
+
+        return prescricoesAtivas.stream()
+                .sorted(Comparator.comparing(TreinoExercicio::getOrdem))
+                .map(TreinoExercicioResponse::new)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +253,11 @@ public class TreinoExercicioService {
 
     private Treino buscarTreino(Long treinoId) {
         return treinoRepository.findById(treinoId)
+                .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
+    }
+
+    private Treino buscarTreinoComLock(Long treinoId) {
+        return treinoRepository.findByIdForUpdate(treinoId)
                 .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
     }
 
@@ -272,6 +342,74 @@ public class TreinoExercicioService {
         }
     }
 
+    private Map<Long, Integer> validarReordenacao(
+            TreinoExercicioReordenarRequest request,
+            List<TreinoExercicio> prescricoesAtivas
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException("Dados da reordenação são obrigatórios");
+        }
+        if (request.getItens() == null) {
+            throw new IllegalArgumentException("Itens da reordenação são obrigatórios");
+        }
+
+        Map<Long, Integer> ordensFinais = new HashMap<>();
+        Set<Integer> ordensRecebidas = new HashSet<>();
+
+        for (TreinoExercicioOrdemItemRequest item : request.getItens()) {
+            if (item == null) {
+                throw new IllegalArgumentException("Item da reordenação não pode ser nulo");
+            }
+            if (item.getTreinoExercicioId() == null) {
+                throw new IllegalArgumentException("Prescrição é obrigatória");
+            }
+            if (item.getOrdem() == null || item.getOrdem() <= 0) {
+                throw new IllegalArgumentException("Ordem deve ser maior que zero");
+            }
+            if (ordensFinais.putIfAbsent(
+                    item.getTreinoExercicioId(),
+                    item.getOrdem()
+            ) != null) {
+                throw new IllegalArgumentException(
+                        "Prescrição não pode se repetir na reordenação"
+                );
+            }
+            if (!ordensRecebidas.add(item.getOrdem())) {
+                throw new IllegalArgumentException("Ordem não pode se repetir na reordenação");
+            }
+        }
+
+        Set<Long> idsAtivos = prescricoesAtivas.stream()
+                .map(TreinoExercicio::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        for (Long idRecebido : ordensFinais.keySet()) {
+            if (!idsAtivos.contains(idRecebido)) {
+                throw new NoSuchElementException(
+                        "Prescrição ativa não encontrada neste treino"
+                );
+            }
+        }
+
+        if (ordensFinais.size() != prescricoesAtivas.size()
+                || !ordensFinais.keySet().equals(idsAtivos)) {
+            throw new IllegalStateException(
+                    "A reordenação deve conter todas as prescrições ativas do treino"
+            );
+        }
+
+        for (int ordemEsperada = 1; ordemEsperada <= prescricoesAtivas.size(); ordemEsperada++) {
+            if (!ordensRecebidas.contains(ordemEsperada)) {
+                throw new IllegalArgumentException(
+                        "As ordens devem formar uma sequência contínua de 1 até "
+                                + prescricoesAtivas.size()
+                );
+            }
+        }
+
+        return ordensFinais;
+    }
+
     private RuntimeException converterConflitoDeUnicidade(
             DataIntegrityViolationException exception
     ) {
@@ -287,6 +425,21 @@ public class TreinoExercicioService {
         if (mensagemNormalizada.contains("uk_treino_exercicio_exercicio_ativo")) {
             return new IllegalStateException(
                     "Exercício já está presente neste treino",
+                    exception
+            );
+        }
+        return exception;
+    }
+
+    private RuntimeException converterConflitoDeReordenacao(
+            DataIntegrityViolationException exception
+    ) {
+        String mensagem = exception.getMostSpecificCause().getMessage();
+        if (mensagem != null
+                && mensagem.toLowerCase(Locale.ROOT)
+                .contains("uk_treino_exercicio_ordem_ativo")) {
+            return new IllegalStateException(
+                    "Conflito ao reordenar exercícios do treino",
                     exception
             );
         }

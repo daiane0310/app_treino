@@ -80,6 +80,10 @@ public class TreinoExercicio {
         this.observacoes = observacoes;
     }
 
+    public void atualizarOrdem(Integer ordem) {
+        this.ordem = ordem;
+    }
+
     public void desativar() {
         this.ativo = false;
     }
