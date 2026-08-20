@@ -1,0 +1,221 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.sidebar {
+  display: none;
+}
+
+.mobileHeader {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.mobileBrand,
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.brandMark {
+  display: inline-grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.04em;
+}
+
+.mobileLogout,
+.logoutButton {
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mobileIdentity {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.mobileIdentity > span:last-child {
+  min-width: 0;
+}
+
+.mobileIdentity strong,
+.mobileIdentity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  font-weight: 800;
+}
+
+.mobileIdentity strong {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+}
+
+.mobileIdentity small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mainContent {
+  width: min(100%, var(--content-max-width));
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) 6rem;
+}
+
+.mobileNav {
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 -4px 16px rgb(20 35 28 / 6%);
+}
+
+.navLink {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: var(--color-primary-strong);
+}
+
+.activeNavLink {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+}
+
+.desktopNav,
+.userArea {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .shell {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    height: 100dvh;
+    flex-direction: column;
+    padding: var(--space-6);
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .brand {
+    margin-bottom: var(--space-10);
+  }
+
+  .desktopNav {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .desktopNav .navLink {
+    justify-content: flex-start;
+  }
+
+  .userArea {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: center;
+    margin-top: auto;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .userDetails {
+    min-width: 0;
+  }
+
+  .userDetails strong,
+  .userDetails span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .userDetails strong {
+    color: var(--color-text-strong);
+  }
+
+  .userDetails span {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  .logoutButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .mobileHeader,
+  .mobileNav {
+    display: none;
+  }
+
+  .mainContent {
+    padding: var(--space-10);
+  }
+}
