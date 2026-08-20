@@ -3,7 +3,7 @@ import PageLoader from '../components/feedback/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import AdminPlaceholderPage from '../pages/AdminPlaceholderPage'
 import AlunoPlaceholderPage from '../pages/aluno/AlunoPlaceholderPage'
-import LoginPlaceholderPage from '../pages/auth/LoginPlaceholderPage'
+import LoginPage from '../pages/auth/LoginPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
 import NotFoundPage from '../pages/errors/NotFoundPage'
 import PersonalPlaceholderPage from '../pages/personal/PersonalPlaceholderPage'
@@ -32,7 +32,7 @@ function AppRoutes() {
       <Route path="/" element={<RootRedirect />} />
 
       <Route element={<PublicOnlyRoute />}>
-        <Route path="/login" element={<LoginPlaceholderPage />} />
+        <Route path="/login" element={<LoginPage />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>

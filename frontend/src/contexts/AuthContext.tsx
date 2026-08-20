@@ -22,7 +22,7 @@ interface AuthContextValue {
   usuario: UsuarioMeResponse | null
   isAuthenticated: boolean
   isInitializing: boolean
-  login: (email: string, senha: string) => Promise<void>
+  login: (email: string, senha: string) => Promise<UsuarioMeResponse>
   logout: () => void
   restaurarSessao: () => Promise<void>
 }
@@ -57,6 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     storeToken(response.token)
     setToken(response.token)
     setUsuario(authenticatedUser)
+    return authenticatedUser
   }, [])
 
   const restaurarSessao = useCallback(async () => {
