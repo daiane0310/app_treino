@@ -1,10 +1,14 @@
 {
-  "name": "app_treino Java 21",
+  "name": "app_treino Java 21 + Node.js",
   "image": "mcr.microsoft.com/devcontainers/java:21",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "none",
       "installMaven": true
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "24",
+      "pnpmVersion": "none"
     }
   }
 }
