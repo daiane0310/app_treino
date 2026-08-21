@@ -7,9 +7,10 @@ import AlunoPlaceholderPage from '../pages/aluno/AlunoPlaceholderPage'
 import LoginPage from '../pages/auth/LoginPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
 import NotFoundPage from '../pages/errors/NotFoundPage'
-import PersonalAlunoPlaceholderPage from '../pages/personal/PersonalAlunoPlaceholderPage'
+import PersonalAlunoPage from '../pages/personal/PersonalAlunoPage'
 import PersonalAlunosPage from '../pages/personal/PersonalAlunosPage'
 import PersonalHomePage from '../pages/personal/PersonalHomePage'
+import PersonalTreinoPlaceholderPage from '../pages/personal/PersonalTreinoPlaceholderPage'
 import ProtectedRoute from './ProtectedRoute'
 import PublicOnlyRoute from './PublicOnlyRoute'
 import RoleRoute from './RoleRoute'
@@ -45,7 +46,11 @@ function AppRoutes() {
             <Route path="alunos" element={<PersonalAlunosPage />} />
             <Route
               path="alunos/:alunoId"
-              element={<PersonalAlunoPlaceholderPage />}
+              element={<PersonalAlunoPage />}
+            />
+            <Route
+              path="alunos/:alunoId/treinos/:treinoId"
+              element={<PersonalTreinoPlaceholderPage />}
             />
           </Route>
         </Route>

@@ -10,6 +10,10 @@
   text-decoration: none;
 }
 
+.backLink:hover {
+  text-decoration: underline;
+}
+
 .content {
   padding: var(--space-6);
   border: 1px solid var(--color-border);
