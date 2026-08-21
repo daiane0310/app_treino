@@ -10,7 +10,7 @@ import NotFoundPage from '../pages/errors/NotFoundPage'
 import PersonalAlunoPage from '../pages/personal/PersonalAlunoPage'
 import PersonalAlunosPage from '../pages/personal/PersonalAlunosPage'
 import PersonalHomePage from '../pages/personal/PersonalHomePage'
-import PersonalTreinoPlaceholderPage from '../pages/personal/PersonalTreinoPlaceholderPage'
+import PersonalTreinoPage from '../pages/personal/PersonalTreinoPage'
 import ProtectedRoute from './ProtectedRoute'
 import PublicOnlyRoute from './PublicOnlyRoute'
 import RoleRoute from './RoleRoute'
@@ -50,7 +50,7 @@ function AppRoutes() {
             />
             <Route
               path="alunos/:alunoId/treinos/:treinoId"
-              element={<PersonalTreinoPlaceholderPage />}
+              element={<PersonalTreinoPage />}
             />
           </Route>
         </Route>
