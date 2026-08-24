@@ -93,6 +93,9 @@ function PersonalTreinoPage() {
       }
     }
 
+    const alunoIdValidado = alunoId
+    const treinoIdValidado = treinoId
+
     async function loadTreinoEPrescricao() {
       setIsLoading(true)
       setTreino(null)
@@ -102,18 +105,18 @@ function PersonalTreinoPage() {
       setCanRetry(false)
 
       try {
-        const treinoResponse = await getTreinoPorId(treinoId)
+        const treinoResponse = await getTreinoPorId(treinoIdValidado)
 
         if (!isActive) {
           return
         }
 
-        if (treinoResponse.alunoId !== alunoId) {
+        if (treinoResponse.alunoId !== alunoIdValidado) {
           setCorrectAlunoId(treinoResponse.alunoId)
           return
         }
 
-        const exerciciosResponse = await getExerciciosDoTreino(treinoId)
+        const exerciciosResponse = await getExerciciosDoTreino(treinoIdValidado)
 
         if (isActive) {
           setTreino(treinoResponse)

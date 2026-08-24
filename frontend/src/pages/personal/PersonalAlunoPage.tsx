@@ -42,6 +42,8 @@ function PersonalAlunoPage() {
       }
     }
 
+    const alunoIdValidado = alunoId
+
     async function loadAlunoETreinos() {
       setIsLoading(true)
       setErrorMessage(null)
@@ -49,7 +51,9 @@ function PersonalAlunoPage() {
 
       try {
         const alunos = await getMeusAlunos()
-        const alunoSelecionado = alunos.find((item) => item.id === alunoId)
+        const alunoSelecionado = alunos.find(
+          (item) => item.id === alunoIdValidado,
+        )
 
         if (!alunoSelecionado) {
           if (isActive) {
@@ -60,7 +64,7 @@ function PersonalAlunoPage() {
           return
         }
 
-        const treinosDoAluno = await getTreinosDoAluno(alunoId)
+        const treinosDoAluno = await getTreinosDoAluno(alunoIdValidado)
 
         if (isActive) {
           setAluno(alunoSelecionado)
