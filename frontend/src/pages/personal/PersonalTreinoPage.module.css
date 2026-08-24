@@ -111,6 +111,13 @@
   gap: var(--space-5);
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
 .sectionHeader h2 {
   margin: 0;
   color: var(--color-text-strong);
@@ -120,6 +127,170 @@
 .sectionHeader p {
   margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
+}
+
+.addButton,
+.submitButton,
+.cancelButton {
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.addButton,
+.submitButton {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.addButton:hover,
+.submitButton:hover:not(:disabled) {
+  background: var(--color-primary-strong);
+}
+
+.successMessage {
+  max-width: 56rem;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.exerciseForm {
+  display: grid;
+  max-width: 56rem;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.formHeading h3 {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-lg);
+}
+
+.formHeading p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.formGrid > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.formGrid label {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.formGrid textarea {
+  resize: vertical;
+}
+
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus,
+.addButton:focus-visible,
+.submitButton:focus-visible,
+.cancelButton:focus-visible,
+.formError button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-focus) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.fullField {
+  grid-column: 1 / -1;
+}
+
+.formError,
+.catalogStatus {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.formError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--color-error);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.formError button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.catalogStatus {
+  background: var(--color-background);
+  color: var(--color-text-muted);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.cancelButton {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+.cancelButton:hover:not(:disabled) {
+  border-color: var(--color-primary-strong);
+  color: var(--color-primary-strong);
+}
+
+.addButton:disabled,
+.submitButton:disabled,
+.cancelButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .exerciseList {
@@ -215,5 +386,31 @@
   .titleRow {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .sectionHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .addButton {
+    width: 100%;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullField {
+    grid-column: auto;
+  }
+
+  .formActions {
+    flex-direction: column-reverse;
+  }
+
+  .submitButton,
+  .cancelButton {
+    width: 100%;
   }
 }

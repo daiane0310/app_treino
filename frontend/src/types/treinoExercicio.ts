@@ -9,3 +9,12 @@ export interface TreinoExercicioResponse {
   cargaPlanejada: number | null
   observacoes: string | null
 }
+
+export interface TreinoExercicioCreateRequest {
+  exercicioId: number
+  ordem: number
+  seriesPlanejadas: number | null
+  repeticoesPlanejadas: string | null
+  cargaPlanejada: number | null
+  observacoes: string | null
+}
