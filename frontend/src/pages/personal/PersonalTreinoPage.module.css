@@ -129,11 +129,17 @@
   color: var(--color-text-muted);
 }
 
+.headerActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
 .addButton,
 .submitButton,
 .cancelButton,
 .editButton,
-.removeButton {
+.removeButton,
+.reorderButton {
   min-height: 2.75rem;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
@@ -147,6 +153,16 @@
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary);
+}
+
+.reorderButton {
+  border: 1px solid var(--color-primary-strong);
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+}
+
+.reorderButton:hover:not(:disabled) {
+  background: var(--color-primary-soft);
 }
 
 .addButton:hover,
@@ -231,8 +247,11 @@
 .cancelButton:focus-visible,
 .editButton:focus-visible,
 .removeButton:focus-visible,
+.reorderButton:focus-visible,
+.moveActions button:focus-visible,
 .formError button:focus-visible,
-.mutationError button:focus-visible {
+.mutationError button:focus-visible,
+.reorderError button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-focus) 35%, transparent);
   outline-offset: 2px;
 }
@@ -388,9 +407,117 @@
 }
 
 .editButton:disabled,
-.removeButton:disabled {
+.removeButton:disabled,
+.reorderButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.reorderPanel {
+  display: grid;
+  max-width: 56rem;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.reorderHeading h3 {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-lg);
+}
+
+.reorderHeading p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+}
+
+.reorderError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.reorderError button {
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.reorderList {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reorderItem {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.reorderIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.reorderIdentity strong {
+  min-width: 0;
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.moveActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.moveActions button {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-primary-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.moveActions button:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.moveActions button:disabled,
+.reorderError button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .exerciseList {
@@ -497,6 +624,14 @@
     width: 100%;
   }
 
+  .headerActions {
+    flex-direction: column;
+  }
+
+  .reorderButton {
+    width: 100%;
+  }
+
   .formGrid {
     grid-template-columns: 1fr;
   }
@@ -521,8 +656,18 @@
   }
 
   .editIdentity,
-  .mutationError {
+  .mutationError,
+  .reorderError,
+  .reorderItem {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .moveActions {
+    width: 100%;
+  }
+
+  .moveActions button {
+    flex: 1;
   }
 }

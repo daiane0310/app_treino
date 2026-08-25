@@ -1,5 +1,6 @@
 import type {
   TreinoExercicioCreateRequest,
+  TreinoExercicioReordenarRequest,
   TreinoExercicioResponse,
   TreinoExercicioUpdateRequest,
 } from '../types/treinoExercicio'
@@ -44,4 +45,15 @@ export async function removerExercicioDoTreino(
   await api.delete<void>(
     `/treinos/${treinoId}/exercicios/${treinoExercicioId}`,
   )
+}
+
+export async function reordenarExerciciosDoTreino(
+  treinoId: number,
+  request: TreinoExercicioReordenarRequest,
+): Promise<TreinoExercicioResponse[]> {
+  const response = await api.put<TreinoExercicioResponse[]>(
+    `/treinos/${treinoId}/exercicios/ordem`,
+    request,
+  )
+  return response.data
 }

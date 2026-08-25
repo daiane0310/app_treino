@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import EmptyState from '../../components/feedback/EmptyState'
@@ -8,12 +9,14 @@ import {
   atualizarExercicioDoTreino,
   getExerciciosDoTreino,
   removerExercicioDoTreino,
+  reordenarExerciciosDoTreino,
 } from '../../services/treinoExercicioService'
 import { getTreinoPorId } from '../../services/treinoService'
 import type { ExercicioResponse } from '../../types/exercicio'
 import type { TreinoResponse } from '../../types/treino'
 import type {
   TreinoExercicioCreateRequest,
+  TreinoExercicioReordenarRequest,
   TreinoExercicioResponse,
   TreinoExercicioUpdateRequest,
 } from '../../types/treinoExercicio'
@@ -88,6 +91,13 @@ function PersonalTreinoPage() {
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [mutationRefreshError, setMutationRefreshError] = useState<string | null>(null)
+  const [reorderItems, setReorderItems] = useState<
+    TreinoExercicioResponse[] | null
+  >(null)
+  const [isSavingOrder, setIsSavingOrder] = useState(false)
+  const [isReloadingOrder, setIsReloadingOrder] = useState(false)
+  const [reorderError, setReorderError] = useState<string | null>(null)
+  const [canReloadOrder, setCanReloadOrder] = useState(false)
 
   useEffect(() => {
     let isActive = true
@@ -162,6 +172,11 @@ function PersonalTreinoPage() {
         (itemPrescricao) => itemPrescricao.exercicioId === itemCatalogo.id,
       ),
   ) ?? []
+
+  const hasReorderChanges = reorderItems !== null && (
+    reorderItems.length !== exercicios.length ||
+    reorderItems.some((item, index) => item.id !== exercicios[index]?.id)
+  )
 
   function getProximaOrdem(): number {
     return exercicios.reduce(
@@ -354,6 +369,124 @@ function PersonalTreinoPage() {
     }
   }
 
+  function iniciarReordenacao() {
+    if (
+      exercicios.length < 2 ||
+      isFormOpen ||
+      editingId !== null ||
+      savingId !== null ||
+      removingId !== null ||
+      mutationRefreshError !== null
+    ) {
+      return
+    }
+
+    setReorderItems([...exercicios])
+    setReorderError(null)
+    setCanReloadOrder(false)
+    setSuccessMessage(null)
+    setActionError(null)
+  }
+
+  function moverItem(index: number, direction: -1 | 1) {
+    if (isSavingOrder || isReloadingOrder) {
+      return
+    }
+
+    setReorderItems((currentItems) => {
+      if (currentItems === null) {
+        return null
+      }
+
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= currentItems.length) {
+        return currentItems
+      }
+
+      const nextItems = [...currentItems]
+      const currentItem = nextItems[index]
+      const targetItem = nextItems[targetIndex]
+      nextItems[index] = targetItem
+      nextItems[targetIndex] = currentItem
+      return nextItems
+    })
+  }
+
+  function cancelarReordenacao() {
+    setReorderItems(null)
+    setReorderError(null)
+    setCanReloadOrder(false)
+  }
+
+  async function salvarReordenacao() {
+    if (
+      reorderItems === null ||
+      !hasReorderChanges ||
+      isSavingOrder ||
+      isReloadingOrder
+    ) {
+      return
+    }
+
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null) {
+      setReorderError('O identificador do treino é inválido.')
+      return
+    }
+
+    const request: TreinoExercicioReordenarRequest = {
+      itens: reorderItems.map((item, index) => ({
+        treinoExercicioId: item.id,
+        ordem: index + 1,
+      })),
+    }
+
+    setIsSavingOrder(true)
+    setReorderError(null)
+    setCanReloadOrder(false)
+    setSuccessMessage(null)
+
+    try {
+      const exerciciosReordenados = await reordenarExerciciosDoTreino(
+        treinoId,
+        request,
+      )
+      setExercicios(exerciciosReordenados)
+      setReorderItems(null)
+      setSuccessMessage('Ordem dos exercícios atualizada.')
+    } catch (error: unknown) {
+      setReorderError(getErrorMessage(error))
+      setCanReloadOrder(
+        axios.isAxiosError(error) &&
+          (error.response?.status === 404 || error.response?.status === 409),
+      )
+    } finally {
+      setIsSavingOrder(false)
+    }
+  }
+
+  async function recarregarDuranteReordenacao() {
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null || isSavingOrder || isReloadingOrder) {
+      return
+    }
+
+    setIsReloadingOrder(true)
+    setReorderError(null)
+
+    try {
+      const prescricaoAtualizada = await getExerciciosDoTreino(treinoId)
+      setExercicios(prescricaoAtualizada)
+      setReorderItems(null)
+      setCanReloadOrder(false)
+    } catch (error: unknown) {
+      setReorderError(getErrorMessage(error))
+      setCanReloadOrder(true)
+    } finally {
+      setIsReloadingOrder(false)
+    }
+  }
+
   function cancelarFormulario() {
     limparFormulario()
     setIsFormOpen(false)
@@ -516,20 +649,34 @@ function PersonalTreinoPage() {
                 <h2 id="exercises-title">Exercícios</h2>
                 <p>Prescrição atual deste treino.</p>
               </div>
-              {!isFormOpen && (
-                <button
-                  className={styles.addButton}
-                  type="button"
-                  onClick={abrirFormulario}
-                  disabled={
-                    editingId !== null ||
-                    savingId !== null ||
-                    removingId !== null ||
-                    mutationRefreshError !== null
-                  }
-                >
-                  Adicionar exercício
-                </button>
+              {!isFormOpen && editingId === null && reorderItems === null && (
+                <div className={styles.headerActions}>
+                  <button
+                    className={styles.reorderButton}
+                    type="button"
+                    onClick={iniciarReordenacao}
+                    disabled={
+                      exercicios.length < 2 ||
+                      savingId !== null ||
+                      removingId !== null ||
+                      mutationRefreshError !== null
+                    }
+                  >
+                    Reordenar
+                  </button>
+                  <button
+                    className={styles.addButton}
+                    type="button"
+                    onClick={abrirFormulario}
+                    disabled={
+                      savingId !== null ||
+                      removingId !== null ||
+                      mutationRefreshError !== null
+                    }
+                  >
+                    Adicionar exercício
+                  </button>
+                </div>
               )}
             </div>
 
@@ -702,7 +849,90 @@ function PersonalTreinoPage() {
               </form>
             )}
 
-            {exercicios.length === 0 ? (
+            {reorderItems !== null ? (
+              <section className={styles.reorderPanel} aria-labelledby="reorder-title">
+                <div className={styles.reorderHeading}>
+                  <div>
+                    <h3 id="reorder-title">Reordenar exercícios</h3>
+                    <p>Use os controles para definir a sequência do treino.</p>
+                  </div>
+                </div>
+
+                {reorderError && (
+                  <div className={styles.reorderError} role="alert">
+                    <span>{reorderError}</span>
+                    {canReloadOrder && (
+                      <button
+                        type="button"
+                        onClick={() => void recarregarDuranteReordenacao()}
+                        disabled={isSavingOrder || isReloadingOrder}
+                      >
+                        {isReloadingOrder ? 'Recarregando...' : 'Recarregar prescrição'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <ol className={styles.reorderList} aria-label="Nova ordem dos exercícios">
+                  {reorderItems.map((item, index) => (
+                    <li className={styles.reorderItem} key={item.id}>
+                      <div className={styles.reorderIdentity}>
+                        <span
+                          className={styles.order}
+                          aria-label={`Posição ${index + 1}`}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <strong>{item.exercicioNome}</strong>
+                      </div>
+                      <div className={styles.moveActions}>
+                        <button
+                          type="button"
+                          onClick={() => moverItem(index, -1)}
+                          disabled={index === 0 || isSavingOrder || isReloadingOrder}
+                          aria-label={`Subir ${item.exercicioNome}`}
+                        >
+                          Subir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moverItem(index, 1)}
+                          disabled={
+                            index === reorderItems.length - 1 ||
+                            isSavingOrder ||
+                            isReloadingOrder
+                          }
+                          aria-label={`Descer ${item.exercicioNome}`}
+                        >
+                          Descer
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className={styles.formActions}>
+                  <button
+                    className={styles.cancelButton}
+                    type="button"
+                    onClick={cancelarReordenacao}
+                    disabled={isSavingOrder || isReloadingOrder}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className={styles.submitButton}
+                    type="button"
+                    onClick={() => void salvarReordenacao()}
+                    disabled={
+                      !hasReorderChanges || isSavingOrder || isReloadingOrder
+                    }
+                  >
+                    {isSavingOrder ? 'Salvando ordem...' : 'Salvar ordem'}
+                  </button>
+                </div>
+              </section>
+            ) : exercicios.length === 0 ? (
               <EmptyState
                 title="Nenhum exercício prescrito"
                 description="Este treino ainda não possui exercícios cadastrados."

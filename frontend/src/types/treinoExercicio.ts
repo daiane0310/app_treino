@@ -26,3 +26,12 @@ export interface TreinoExercicioUpdateRequest {
   cargaPlanejada: number | null
   observacoes: string | null
 }
+
+export interface TreinoExercicioOrdemItemRequest {
+  treinoExercicioId: number
+  ordem: number
+}
+
+export interface TreinoExercicioReordenarRequest {
+  itens: TreinoExercicioOrdemItemRequest[]
+}
