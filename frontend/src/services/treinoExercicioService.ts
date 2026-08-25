@@ -1,6 +1,7 @@
 import type {
   TreinoExercicioCreateRequest,
   TreinoExercicioResponse,
+  TreinoExercicioUpdateRequest,
 } from '../types/treinoExercicio'
 import { api } from './api'
 
@@ -22,4 +23,25 @@ export async function adicionarExercicioAoTreino(
     request,
   )
   return response.data
+}
+
+export async function atualizarExercicioDoTreino(
+  treinoId: number,
+  treinoExercicioId: number,
+  request: TreinoExercicioUpdateRequest,
+): Promise<TreinoExercicioResponse> {
+  const response = await api.put<TreinoExercicioResponse>(
+    `/treinos/${treinoId}/exercicios/${treinoExercicioId}`,
+    request,
+  )
+  return response.data
+}
+
+export async function removerExercicioDoTreino(
+  treinoId: number,
+  treinoExercicioId: number,
+): Promise<void> {
+  await api.delete<void>(
+    `/treinos/${treinoId}/exercicios/${treinoExercicioId}`,
+  )
 }

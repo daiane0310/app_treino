@@ -5,7 +5,9 @@ import ErrorState from '../../components/feedback/ErrorState'
 import { getExerciciosAtivos } from '../../services/exercicioService'
 import {
   adicionarExercicioAoTreino,
+  atualizarExercicioDoTreino,
   getExerciciosDoTreino,
+  removerExercicioDoTreino,
 } from '../../services/treinoExercicioService'
 import { getTreinoPorId } from '../../services/treinoService'
 import type { ExercicioResponse } from '../../types/exercicio'
@@ -13,6 +15,7 @@ import type { TreinoResponse } from '../../types/treino'
 import type {
   TreinoExercicioCreateRequest,
   TreinoExercicioResponse,
+  TreinoExercicioUpdateRequest,
 } from '../../types/treinoExercicio'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import styles from './PersonalTreinoPage.module.css'
@@ -75,6 +78,16 @@ function PersonalTreinoPage() {
   const [repeticoesPlanejadas, setRepeticoesPlanejadas] = useState('')
   const [cargaPlanejada, setCargaPlanejada] = useState('')
   const [observacoes, setObservacoes] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editSeries, setEditSeries] = useState('')
+  const [editRepeticoes, setEditRepeticoes] = useState('')
+  const [editCarga, setEditCarga] = useState('')
+  const [editObservacoes, setEditObservacoes] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<number | null>(null)
+  const [removingId, setRemovingId] = useState<number | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [mutationRefreshError, setMutationRefreshError] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -181,12 +194,163 @@ function PersonalTreinoPage() {
   }
 
   function abrirFormulario() {
+    setEditingId(null)
+    setEditError(null)
     limparFormulario()
     setSuccessMessage(null)
     setIsFormOpen(true)
 
     if (catalogo === null && !isCatalogLoading) {
       void carregarCatalogo()
+    }
+  }
+
+  function iniciarEdicao(item: TreinoExercicioResponse) {
+    setIsFormOpen(false)
+    setFormError(null)
+    setEditingId(item.id)
+    setEditSeries(item.seriesPlanejadas?.toString() ?? '')
+    setEditRepeticoes(item.repeticoesPlanejadas ?? '')
+    setEditCarga(item.cargaPlanejada?.toString() ?? '')
+    setEditObservacoes(item.observacoes ?? '')
+    setEditError(null)
+    setActionError(null)
+    setSuccessMessage(null)
+  }
+
+  function cancelarEdicao() {
+    setEditingId(null)
+    setEditError(null)
+  }
+
+  function criarUpdateRequest(
+    item: TreinoExercicioResponse,
+  ): TreinoExercicioUpdateRequest | null {
+    let parsedSeries: number | null = null
+    if (editSeries !== '') {
+      parsedSeries = parsePositiveInteger(editSeries)
+      if (parsedSeries === null) {
+        setEditError('As séries devem ser um número inteiro maior que zero.')
+        return null
+      }
+    }
+
+    const repeticoes = normalizarTextoOpcional(editRepeticoes)
+    if (editRepeticoes !== '' && repeticoes === null) {
+      setEditError('As repetições não podem conter apenas espaços.')
+      return null
+    }
+
+    let parsedCarga: number | null = null
+    const carga = editCarga.trim()
+    if (carga) {
+      if (!/^\d+(?:[.,]\d{1,2})?$/.test(carga)) {
+        setEditError(
+          'A carga deve ser positiva ou zero e ter no máximo duas casas decimais.',
+        )
+        return null
+      }
+
+      parsedCarga = Number(carga.replace(',', '.'))
+      if (!Number.isFinite(parsedCarga) || parsedCarga < 0) {
+        setEditError('Informe uma carga válida.')
+        return null
+      }
+    }
+
+    return {
+      ordem: item.ordem,
+      seriesPlanejadas: parsedSeries,
+      repeticoesPlanejadas: repeticoes,
+      cargaPlanejada: parsedCarga,
+      observacoes: normalizarTextoOpcional(editObservacoes),
+    }
+  }
+
+  async function recarregarAposMutacao(
+    treinoId: number,
+    successMessageValue: string,
+  ) {
+    try {
+      const prescricaoAtualizada = await getExerciciosDoTreino(treinoId)
+      setExercicios(prescricaoAtualizada)
+      setMutationRefreshError(null)
+      setSuccessMessage(successMessageValue)
+    } catch (error: unknown) {
+      setSuccessMessage(null)
+      setMutationRefreshError(
+        `A operação foi concluída, mas não foi possível atualizar a lista. ${getErrorMessage(error)}`,
+      )
+    }
+  }
+
+  async function handleEditSubmit(
+    event: FormEvent<HTMLFormElement>,
+    item: TreinoExercicioResponse,
+  ) {
+    event.preventDefault()
+
+    if (savingId !== null || removingId !== null) {
+      return
+    }
+
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null) {
+      setEditError('O identificador do treino é inválido.')
+      return
+    }
+
+    const request = criarUpdateRequest(item)
+    if (request === null) {
+      return
+    }
+
+    setSavingId(item.id)
+    setEditError(null)
+    setActionError(null)
+    setSuccessMessage(null)
+
+    try {
+      await atualizarExercicioDoTreino(treinoId, item.id, request)
+      setEditingId(null)
+      await recarregarAposMutacao(treinoId, 'Prescrição atualizada.')
+    } catch (error: unknown) {
+      setEditError(getErrorMessage(error))
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function handleRemove(item: TreinoExercicioResponse) {
+    const confirmed = window.confirm(
+      'Remover exercício do treino?\n\nEssa ação remove o exercício da prescrição atual, mas não apaga o histórico de execuções anteriores.',
+    )
+
+    if (!confirmed || savingId !== null || removingId !== null) {
+      return
+    }
+
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null) {
+      setErrorMessage('O identificador do treino é inválido.')
+      return
+    }
+
+    setRemovingId(item.id)
+    setSuccessMessage(null)
+    setActionError(null)
+    setMutationRefreshError(null)
+
+    try {
+      await removerExercicioDoTreino(treinoId, item.id)
+      if (editingId === item.id) {
+        setEditingId(null)
+      }
+      await recarregarAposMutacao(treinoId, 'Exercício removido do treino.')
+    } catch (error: unknown) {
+      setActionError(getErrorMessage(error))
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -353,7 +517,17 @@ function PersonalTreinoPage() {
                 <p>Prescrição atual deste treino.</p>
               </div>
               {!isFormOpen && (
-                <button className={styles.addButton} type="button" onClick={abrirFormulario}>
+                <button
+                  className={styles.addButton}
+                  type="button"
+                  onClick={abrirFormulario}
+                  disabled={
+                    editingId !== null ||
+                    savingId !== null ||
+                    removingId !== null ||
+                    mutationRefreshError !== null
+                  }
+                >
                   Adicionar exercício
                 </button>
               )}
@@ -363,6 +537,27 @@ function PersonalTreinoPage() {
               <p className={styles.successMessage} role="status" aria-live="polite">
                 {successMessage}
               </p>
+            )}
+
+            {actionError && (
+              <p className={styles.pageActionError} role="alert">
+                {actionError}
+              </p>
+            )}
+
+            {mutationRefreshError && (
+              <div className={styles.mutationError} role="alert">
+                <span>{mutationRefreshError}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMutationRefreshError(null)
+                    setReloadKey((current) => current + 1)
+                  }}
+                >
+                  Tentar recarregar
+                </button>
+              </div>
             )}
 
             {isFormOpen && (
@@ -556,6 +751,123 @@ function PersonalTreinoPage() {
                         <div className={styles.notes}>
                           <strong>Observação</strong>
                           <p>{item.observacoes}</p>
+                        </div>
+                      )}
+
+                      {editingId === item.id ? (
+                        <form
+                          className={styles.editForm}
+                          onSubmit={(event) => void handleEditSubmit(event, item)}
+                          noValidate
+                        >
+                          <div className={styles.editIdentity}>
+                            <strong>{item.exercicioNome}</strong>
+                            <span>Ordem {item.ordem}</span>
+                          </div>
+
+                          {editError && (
+                            <p className={styles.formError} role="alert">
+                              {editError}
+                            </p>
+                          )}
+
+                          <div className={styles.formGrid}>
+                            <div>
+                              <label htmlFor={`edit-series-${item.id}`}>Séries</label>
+                              <input
+                                id={`edit-series-${item.id}`}
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={editSeries}
+                                onChange={(event) => setEditSeries(event.target.value)}
+                                disabled={savingId === item.id}
+                              />
+                            </div>
+
+                            <div>
+                              <label htmlFor={`edit-repetitions-${item.id}`}>
+                                Repetições
+                              </label>
+                              <input
+                                id={`edit-repetitions-${item.id}`}
+                                type="text"
+                                value={editRepeticoes}
+                                onChange={(event) => setEditRepeticoes(event.target.value)}
+                                disabled={savingId === item.id}
+                              />
+                            </div>
+
+                            <div>
+                              <label htmlFor={`edit-load-${item.id}`}>Carga (kg)</label>
+                              <input
+                                id={`edit-load-${item.id}`}
+                                type="text"
+                                inputMode="decimal"
+                                value={editCarga}
+                                onChange={(event) => setEditCarga(event.target.value)}
+                                disabled={savingId === item.id}
+                              />
+                            </div>
+
+                            <div className={styles.fullField}>
+                              <label htmlFor={`edit-notes-${item.id}`}>Observações</label>
+                              <textarea
+                                id={`edit-notes-${item.id}`}
+                                value={editObservacoes}
+                                onChange={(event) => setEditObservacoes(event.target.value)}
+                                disabled={savingId === item.id}
+                                rows={4}
+                              />
+                            </div>
+                          </div>
+
+                          <div className={styles.formActions}>
+                            <button
+                              className={styles.cancelButton}
+                              type="button"
+                              onClick={cancelarEdicao}
+                              disabled={savingId === item.id}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              className={styles.submitButton}
+                              type="submit"
+                              disabled={savingId === item.id}
+                            >
+                              {savingId === item.id ? 'Salvando...' : 'Salvar'}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className={styles.cardActions}>
+                          <button
+                            className={styles.editButton}
+                            type="button"
+                            onClick={() => iniciarEdicao(item)}
+                            disabled={
+                              editingId !== null ||
+                              savingId !== null ||
+                              removingId !== null ||
+                              mutationRefreshError !== null
+                            }
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className={styles.removeButton}
+                            type="button"
+                            onClick={() => void handleRemove(item)}
+                            disabled={
+                              editingId !== null ||
+                              savingId !== null ||
+                              removingId !== null ||
+                              mutationRefreshError !== null
+                            }
+                          >
+                            {removingId === item.id ? 'Removendo...' : 'Remover'}
+                          </button>
                         </div>
                       )}
                     </li>

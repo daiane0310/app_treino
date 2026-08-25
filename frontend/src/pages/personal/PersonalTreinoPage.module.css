@@ -131,7 +131,9 @@
 
 .addButton,
 .submitButton,
-.cancelButton {
+.cancelButton,
+.editButton,
+.removeButton {
   min-height: 2.75rem;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
@@ -227,7 +229,10 @@
 .addButton:focus-visible,
 .submitButton:focus-visible,
 .cancelButton:focus-visible,
-.formError button:focus-visible {
+.editButton:focus-visible,
+.removeButton:focus-visible,
+.formError button:focus-visible,
+.mutationError button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-focus) 35%, transparent);
   outline-offset: 2px;
 }
@@ -286,9 +291,104 @@
   color: var(--color-primary-strong);
 }
 
+.mutationError {
+  display: flex;
+  max-width: 56rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.pageActionError {
+  max-width: 56rem;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.mutationError button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.editForm {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.editIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.editIdentity strong {
+  color: var(--color-text-strong);
+}
+
+.editIdentity span {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.editButton {
+  border: 1px solid var(--color-primary-strong);
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+}
+
+.editButton:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.removeButton {
+  border: 1px solid var(--color-error);
+  background: var(--color-surface);
+  color: var(--color-error);
+}
+
+.removeButton:hover:not(:disabled) {
+  background: var(--color-error-soft);
+}
+
 .addButton:disabled,
 .submitButton:disabled,
 .cancelButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.editButton:disabled,
+.removeButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -410,7 +510,19 @@
   }
 
   .submitButton,
-  .cancelButton {
+  .cancelButton,
+  .editButton,
+  .removeButton {
     width: 100%;
+  }
+
+  .cardActions {
+    flex-direction: column;
+  }
+
+  .editIdentity,
+  .mutationError {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

@@ -18,3 +18,11 @@ export interface TreinoExercicioCreateRequest {
   cargaPlanejada: number | null
   observacoes: string | null
 }
+
+export interface TreinoExercicioUpdateRequest {
+  ordem: number
+  seriesPlanejadas: number | null
+  repeticoesPlanejadas: string | null
+  cargaPlanejada: number | null
+  observacoes: string | null
+}
