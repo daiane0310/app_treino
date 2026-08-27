@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import EmptyState from '../../components/feedback/EmptyState'
 import ErrorState from '../../components/feedback/ErrorState'
 import { getMeusAlunos } from '../../services/alunoService'
-import { getTreinosDoAluno } from '../../services/treinoService'
+import {
+  criarTreinoParaAluno,
+  getTreinosDoAluno,
+} from '../../services/treinoService'
 import type { AlunoResumoResponse } from '../../types/aluno'
-import type { TreinoResponse } from '../../types/treino'
+import type { TreinoCreateRequest, TreinoResponse } from '../../types/treino'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import styles from './PersonalAlunoPage.module.css'
 
@@ -26,6 +29,16 @@ function PersonalAlunoPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [canRetry, setCanRetry] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [ativo, setAtivo] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [novoTreino, setNovoTreino] = useState<TreinoResponse | null>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     let isActive = true
@@ -91,6 +104,105 @@ function PersonalAlunoPage() {
     }
   }, [alunoIdParam, reloadKey])
 
+  function limparFormulario() {
+    setNome('')
+    setDescricao('')
+    setAtivo(true)
+    setFormError(null)
+  }
+
+  function abrirFormulario() {
+    limparFormulario()
+    setIsFormOpen(true)
+    setSuccessMessage(null)
+  }
+
+  function cancelarFormulario() {
+    limparFormulario()
+    setIsFormOpen(false)
+  }
+
+  function criarRequest(): TreinoCreateRequest | null {
+    const nomeNormalizado = nome.trim()
+    if (!nomeNormalizado) {
+      setFormError('Nome do treino é obrigatório.')
+      return null
+    }
+    if (nomeNormalizado.length > 255) {
+      setFormError('Nome do treino deve ter no máximo 255 caracteres.')
+      return null
+    }
+
+    const descricaoNormalizada = descricao.trim()
+    return {
+      nome: nomeNormalizado,
+      descricao: descricaoNormalizada || null,
+      ativo,
+    }
+  }
+
+  async function recarregarListaDeTreinos(alunoId: number): Promise<boolean> {
+    try {
+      const treinosAtualizados = await getTreinosDoAluno(alunoId)
+      setTreinos(treinosAtualizados)
+      setRefreshError(null)
+      return true
+    } catch (error: unknown) {
+      setRefreshError(
+        `O treino foi criado, mas a lista não pôde ser atualizada. ${getErrorMessage(error)}`,
+      )
+      return false
+    }
+  }
+
+  async function handleRetryRefresh() {
+    const alunoId = parseAlunoId(alunoIdParam)
+    if (alunoId === null || isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    await recarregarListaDeTreinos(alunoId)
+    setIsRefreshing(false)
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (isSubmitting) {
+      return
+    }
+
+    const alunoId = parseAlunoId(alunoIdParam)
+    if (alunoId === null) {
+      setFormError('O identificador do aluno é inválido.')
+      return
+    }
+
+    const request = criarRequest()
+    if (request === null) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setFormError(null)
+    setSuccessMessage(null)
+    setRefreshError(null)
+
+    try {
+      const treinoCriado = await criarTreinoParaAluno(alunoId, request)
+      setNovoTreino(treinoCriado)
+      setIsFormOpen(false)
+      limparFormulario()
+      setSuccessMessage('Treino criado com sucesso.')
+      await recarregarListaDeTreinos(alunoId)
+    } catch (error: unknown) {
+      setFormError(getErrorMessage(error))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <section className={styles.page}>
       <Link className={styles.backLink} to="/personal/alunos">
@@ -124,9 +236,115 @@ function PersonalAlunoPage() {
 
           <section className={styles.workouts} aria-labelledby="workouts-title">
             <div className={styles.sectionHeader}>
-              <h2 id="workouts-title">Treinos</h2>
-              <p>Treinos atualmente atribuídos a este aluno.</p>
+              <div>
+                <h2 id="workouts-title">Treinos</h2>
+                <p>Treinos atualmente atribuídos a este aluno.</p>
+              </div>
+              {!isFormOpen && (
+                <button
+                  className={styles.createButton}
+                  type="button"
+                  onClick={abrirFormulario}
+                  disabled={isSubmitting}
+                >
+                  Criar treino
+                </button>
+              )}
             </div>
+
+            {successMessage && novoTreino && (
+              <div className={styles.successMessage} role="status" aria-live="polite">
+                <span>{successMessage}</span>
+                <Link
+                  to={`/personal/alunos/${aluno.id}/treinos/${novoTreino.id}`}
+                >
+                  Montar treino
+                </Link>
+              </div>
+            )}
+
+            {refreshError && (
+              <div className={styles.refreshError} role="alert">
+                <span>{refreshError}</span>
+                <button
+                  type="button"
+                  onClick={() => void handleRetryRefresh()}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? 'Recarregando...' : 'Tentar recarregar'}
+                </button>
+              </div>
+            )}
+
+            {isFormOpen && (
+              <form className={styles.createForm} onSubmit={handleSubmit} noValidate>
+                <div className={styles.formHeading}>
+                  <h3>Criar treino</h3>
+                  <p>Preencha os dados do novo treino do aluno.</p>
+                </div>
+
+                {formError && (
+                  <p className={styles.formError} role="alert">
+                    {formError}
+                  </p>
+                )}
+
+                <div className={styles.formFields}>
+                  <div>
+                    <label htmlFor="workout-name">Nome do treino *</label>
+                    <input
+                      id="workout-name"
+                      type="text"
+                      value={nome}
+                      onChange={(event) => setNome(event.target.value)}
+                      maxLength={255}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="workout-description">Descrição</label>
+                    <textarea
+                      id="workout-description"
+                      value={descricao}
+                      onChange={(event) => setDescricao(event.target.value)}
+                      rows={4}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <label className={styles.checkboxField} htmlFor="workout-active">
+                    <input
+                      id="workout-active"
+                      type="checkbox"
+                      checked={ativo}
+                      onChange={(event) => setAtivo(event.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                    <span>Treino ativo</span>
+                  </label>
+                </div>
+
+                <div className={styles.formActions}>
+                  <button
+                    className={styles.cancelButton}
+                    type="button"
+                    onClick={cancelarFormulario}
+                    disabled={isSubmitting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className={styles.submitButton}
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Criando...' : 'Criar treino'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {treinos.length === 0 ? (
               <EmptyState

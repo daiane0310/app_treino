@@ -1,4 +1,4 @@
-import type { TreinoResponse } from '../types/treino'
+import type { TreinoCreateRequest, TreinoResponse } from '../types/treino'
 import { api } from './api'
 
 export async function getTreinosDoAluno(
@@ -10,5 +10,16 @@ export async function getTreinosDoAluno(
 
 export async function getTreinoPorId(treinoId: number): Promise<TreinoResponse> {
   const response = await api.get<TreinoResponse>(`/treinos/${treinoId}`)
+  return response.data
+}
+
+export async function criarTreinoParaAluno(
+  alunoId: number,
+  request: TreinoCreateRequest,
+): Promise<TreinoResponse> {
+  const response = await api.post<TreinoResponse>(
+    `/alunos/${alunoId}/treinos`,
+    request,
+  )
   return response.data
 }

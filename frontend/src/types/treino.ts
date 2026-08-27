@@ -10,3 +10,9 @@ export interface TreinoResponse {
   criadoEm: string
   atualizadoEm: string
 }
+
+export interface TreinoCreateRequest {
+  nome: string
+  descricao: string | null
+  ativo: boolean
+}
