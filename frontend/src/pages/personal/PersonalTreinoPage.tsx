@@ -11,9 +11,9 @@ import {
   removerExercicioDoTreino,
   reordenarExerciciosDoTreino,
 } from '../../services/treinoExercicioService'
-import { getTreinoPorId } from '../../services/treinoService'
+import { atualizarTreino, getTreinoPorId } from '../../services/treinoService'
 import type { ExercicioResponse } from '../../types/exercicio'
-import type { TreinoResponse } from '../../types/treino'
+import type { TreinoResponse, TreinoUpdateRequest } from '../../types/treino'
 import type {
   TreinoExercicioCreateRequest,
   TreinoExercicioReordenarRequest,
@@ -98,6 +98,14 @@ function PersonalTreinoPage() {
   const [isReloadingOrder, setIsReloadingOrder] = useState(false)
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [canReloadOrder, setCanReloadOrder] = useState(false)
+  const [isWorkoutEditing, setIsWorkoutEditing] = useState(false)
+  const [workoutName, setWorkoutName] = useState('')
+  const [workoutDescription, setWorkoutDescription] = useState('')
+  const [isWorkoutSaving, setIsWorkoutSaving] = useState(false)
+  const [workoutEditError, setWorkoutEditError] = useState<string | null>(null)
+  const [workoutSuccessMessage, setWorkoutSuccessMessage] = useState<
+    string | null
+  >(null)
 
   useEffect(() => {
     let isActive = true
@@ -487,6 +495,82 @@ function PersonalTreinoPage() {
     }
   }
 
+  function iniciarEdicaoDoTreino() {
+    if (
+      treino === null ||
+      isFormOpen ||
+      editingId !== null ||
+      savingId !== null ||
+      removingId !== null ||
+      reorderItems !== null ||
+      isSubmitting ||
+      mutationRefreshError !== null
+    ) {
+      return
+    }
+
+    setWorkoutName(treino.nome)
+    setWorkoutDescription(treino.descricao ?? '')
+    setWorkoutEditError(null)
+    setWorkoutSuccessMessage(null)
+    setIsWorkoutEditing(true)
+  }
+
+  function cancelarEdicaoDoTreino() {
+    setWorkoutName('')
+    setWorkoutDescription('')
+    setWorkoutEditError(null)
+    setIsWorkoutEditing(false)
+  }
+
+  async function handleWorkoutSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (treino === null || isWorkoutSaving) {
+      return
+    }
+
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null) {
+      setWorkoutEditError('O identificador do treino é inválido.')
+      return
+    }
+
+    const normalizedName = workoutName.trim()
+    if (!normalizedName) {
+      setWorkoutEditError('Nome do treino é obrigatório.')
+      return
+    }
+    if (normalizedName.length > 255) {
+      setWorkoutEditError('Nome do treino deve ter no máximo 255 caracteres.')
+      return
+    }
+
+    const normalizedDescription = workoutDescription.trim()
+    const request: TreinoUpdateRequest = {
+      nome: normalizedName,
+      descricao: normalizedDescription || null,
+      ativo: treino.ativo,
+    }
+
+    setIsWorkoutSaving(true)
+    setWorkoutEditError(null)
+    setWorkoutSuccessMessage(null)
+
+    try {
+      const updatedWorkout = await atualizarTreino(treinoId, request)
+      setTreino(updatedWorkout)
+      setWorkoutName('')
+      setWorkoutDescription('')
+      setIsWorkoutEditing(false)
+      setWorkoutSuccessMessage('Treino atualizado com sucesso.')
+    } catch (error: unknown) {
+      setWorkoutEditError(getErrorMessage(error))
+    } finally {
+      setIsWorkoutSaving(false)
+    }
+  }
+
   function cancelarFormulario() {
     limparFormulario()
     setIsFormOpen(false)
@@ -641,6 +725,92 @@ function PersonalTreinoPage() {
               <p className={styles.description}>{treino.descricao}</p>
             )}
             <p className={styles.studentName}>Aluno: {treino.alunoNome}</p>
+
+            {workoutSuccessMessage && (
+              <p
+                className={styles.workoutSuccessMessage}
+                role="status"
+                aria-live="polite"
+              >
+                {workoutSuccessMessage}
+              </p>
+            )}
+
+            {isWorkoutEditing ? (
+              <form
+                className={styles.workoutEditForm}
+                onSubmit={handleWorkoutSubmit}
+                noValidate
+              >
+                {workoutEditError && (
+                  <p className={styles.formError} role="alert">
+                    {workoutEditError}
+                  </p>
+                )}
+
+                <div className={styles.workoutEditFields}>
+                  <div>
+                    <label htmlFor="workout-edit-name">Nome *</label>
+                    <input
+                      id="workout-edit-name"
+                      type="text"
+                      value={workoutName}
+                      onChange={(event) => setWorkoutName(event.target.value)}
+                      maxLength={255}
+                      required
+                      disabled={isWorkoutSaving}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="workout-edit-description">Descrição</label>
+                    <textarea
+                      id="workout-edit-description"
+                      value={workoutDescription}
+                      onChange={(event) => setWorkoutDescription(event.target.value)}
+                      rows={4}
+                      disabled={isWorkoutSaving}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formActions}>
+                  <button
+                    className={styles.cancelButton}
+                    type="button"
+                    onClick={cancelarEdicaoDoTreino}
+                    disabled={isWorkoutSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className={styles.submitButton}
+                    type="submit"
+                    disabled={isWorkoutSaving}
+                  >
+                    {isWorkoutSaving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className={styles.workoutHeaderActions}>
+                <button
+                  className={styles.editWorkoutButton}
+                  type="button"
+                  onClick={iniciarEdicaoDoTreino}
+                  disabled={
+                    isFormOpen ||
+                    editingId !== null ||
+                    savingId !== null ||
+                    removingId !== null ||
+                    reorderItems !== null ||
+                    isSubmitting ||
+                    mutationRefreshError !== null
+                  }
+                >
+                  Editar treino
+                </button>
+              </div>
+            )}
           </header>
 
           <section className={styles.prescription} aria-labelledby="exercises-title">
@@ -656,6 +826,7 @@ function PersonalTreinoPage() {
                     type="button"
                     onClick={iniciarReordenacao}
                     disabled={
+                      isWorkoutEditing ||
                       exercicios.length < 2 ||
                       savingId !== null ||
                       removingId !== null ||
@@ -669,6 +840,7 @@ function PersonalTreinoPage() {
                     type="button"
                     onClick={abrirFormulario}
                     disabled={
+                      isWorkoutEditing ||
                       savingId !== null ||
                       removingId !== null ||
                       mutationRefreshError !== null
@@ -1078,6 +1250,7 @@ function PersonalTreinoPage() {
                             onClick={() => iniciarEdicao(item)}
                             disabled={
                               editingId !== null ||
+                              isWorkoutEditing ||
                               savingId !== null ||
                               removingId !== null ||
                               mutationRefreshError !== null
@@ -1091,6 +1264,7 @@ function PersonalTreinoPage() {
                             onClick={() => void handleRemove(item)}
                             disabled={
                               editingId !== null ||
+                              isWorkoutEditing ||
                               savingId !== null ||
                               removingId !== null ||
                               mutationRefreshError !== null

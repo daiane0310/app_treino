@@ -106,6 +106,86 @@
   font-weight: 700;
 }
 
+.workoutHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.editWorkoutButton {
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-primary-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.editWorkoutButton:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.editWorkoutButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workoutSuccessMessage {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.workoutEditForm {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.workoutEditFields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.workoutEditFields > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.workoutEditFields label {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.workoutEditFields input,
+.workoutEditFields textarea {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.workoutEditFields textarea {
+  resize: vertical;
+}
+
 .prescription {
   display: grid;
   gap: var(--space-5);
@@ -248,6 +328,9 @@
 .editButton:focus-visible,
 .removeButton:focus-visible,
 .reorderButton:focus-visible,
+.editWorkoutButton:focus-visible,
+.workoutEditFields input:focus-visible,
+.workoutEditFields textarea:focus-visible,
 .moveActions button:focus-visible,
 .formError button:focus-visible,
 .mutationError button:focus-visible,
@@ -621,6 +704,10 @@
   }
 
   .addButton {
+    width: 100%;
+  }
+
+  .editWorkoutButton {
     width: 100%;
   }
 

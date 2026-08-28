@@ -1,4 +1,8 @@
-import type { TreinoCreateRequest, TreinoResponse } from '../types/treino'
+import type {
+  TreinoCreateRequest,
+  TreinoResponse,
+  TreinoUpdateRequest,
+} from '../types/treino'
 import { api } from './api'
 
 export async function getTreinosDoAluno(
@@ -21,5 +25,13 @@ export async function criarTreinoParaAluno(
     `/alunos/${alunoId}/treinos`,
     request,
   )
+  return response.data
+}
+
+export async function atualizarTreino(
+  treinoId: number,
+  request: TreinoUpdateRequest,
+): Promise<TreinoResponse> {
+  const response = await api.put<TreinoResponse>(`/treinos/${treinoId}`, request)
   return response.data
 }

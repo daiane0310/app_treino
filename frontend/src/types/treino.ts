@@ -16,3 +16,9 @@ export interface TreinoCreateRequest {
   descricao: string | null
   ativo: boolean
 }
+
+export interface TreinoUpdateRequest {
+  nome: string
+  descricao: string | null
+  ativo: boolean
+}
