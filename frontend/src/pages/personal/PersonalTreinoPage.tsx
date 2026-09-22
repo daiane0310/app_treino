@@ -102,7 +102,9 @@ function PersonalTreinoPage() {
   const [workoutName, setWorkoutName] = useState('')
   const [workoutDescription, setWorkoutDescription] = useState('')
   const [isWorkoutSaving, setIsWorkoutSaving] = useState(false)
+  const [isUpdatingWorkoutStatus, setIsUpdatingWorkoutStatus] = useState(false)
   const [workoutEditError, setWorkoutEditError] = useState<string | null>(null)
+  const [workoutStatusError, setWorkoutStatusError] = useState<string | null>(null)
   const [workoutSuccessMessage, setWorkoutSuccessMessage] = useState<
     string | null
   >(null)
@@ -217,6 +219,10 @@ function PersonalTreinoPage() {
   }
 
   function abrirFormulario() {
+    if (isUpdatingWorkoutStatus) {
+      return
+    }
+
     setEditingId(null)
     setEditError(null)
     limparFormulario()
@@ -229,6 +235,10 @@ function PersonalTreinoPage() {
   }
 
   function iniciarEdicao(item: TreinoExercicioResponse) {
+    if (isUpdatingWorkoutStatus) {
+      return
+    }
+
     setIsFormOpen(false)
     setFormError(null)
     setEditingId(item.id)
@@ -313,7 +323,7 @@ function PersonalTreinoPage() {
   ) {
     event.preventDefault()
 
-    if (savingId !== null || removingId !== null) {
+    if (savingId !== null || removingId !== null || isUpdatingWorkoutStatus) {
       return
     }
 
@@ -345,6 +355,10 @@ function PersonalTreinoPage() {
   }
 
   async function handleRemove(item: TreinoExercicioResponse) {
+    if (isUpdatingWorkoutStatus) {
+      return
+    }
+
     const confirmed = window.confirm(
       'Remover exercício do treino?\n\nEssa ação remove o exercício da prescrição atual, mas não apaga o histórico de execuções anteriores.',
     )
@@ -384,6 +398,7 @@ function PersonalTreinoPage() {
       editingId !== null ||
       savingId !== null ||
       removingId !== null ||
+      isUpdatingWorkoutStatus ||
       mutationRefreshError !== null
     ) {
       return
@@ -397,7 +412,7 @@ function PersonalTreinoPage() {
   }
 
   function moverItem(index: number, direction: -1 | 1) {
-    if (isSavingOrder || isReloadingOrder) {
+    if (isSavingOrder || isReloadingOrder || isUpdatingWorkoutStatus) {
       return
     }
 
@@ -431,7 +446,8 @@ function PersonalTreinoPage() {
       reorderItems === null ||
       !hasReorderChanges ||
       isSavingOrder ||
-      isReloadingOrder
+      isReloadingOrder ||
+      isUpdatingWorkoutStatus
     ) {
       return
     }
@@ -475,7 +491,12 @@ function PersonalTreinoPage() {
 
   async function recarregarDuranteReordenacao() {
     const treinoId = parseId(treinoIdParam)
-    if (treinoId === null || isSavingOrder || isReloadingOrder) {
+    if (
+      treinoId === null ||
+      isSavingOrder ||
+      isReloadingOrder ||
+      isUpdatingWorkoutStatus
+    ) {
       return
     }
 
@@ -504,6 +525,7 @@ function PersonalTreinoPage() {
       removingId !== null ||
       reorderItems !== null ||
       isSubmitting ||
+      isUpdatingWorkoutStatus ||
       mutationRefreshError !== null
     ) {
       return
@@ -526,7 +548,7 @@ function PersonalTreinoPage() {
   async function handleWorkoutSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (treino === null || isWorkoutSaving) {
+    if (treino === null || isWorkoutSaving || isUpdatingWorkoutStatus) {
       return
     }
 
@@ -568,6 +590,66 @@ function PersonalTreinoPage() {
       setWorkoutEditError(getErrorMessage(error))
     } finally {
       setIsWorkoutSaving(false)
+    }
+  }
+
+  async function handleWorkoutStatusUpdate() {
+    if (
+      treino === null ||
+      isUpdatingWorkoutStatus ||
+      isWorkoutEditing ||
+      isWorkoutSaving ||
+      isFormOpen ||
+      isSubmitting ||
+      editingId !== null ||
+      savingId !== null ||
+      removingId !== null ||
+      reorderItems !== null ||
+      isSavingOrder ||
+      isReloadingOrder ||
+      mutationRefreshError !== null
+    ) {
+      return
+    }
+
+    if (
+      treino.ativo &&
+      !window.confirm(
+        'Desativar este treino?\n\nO treino continuará visível e seu histórico será preservado, mas o aluno não poderá iniciar uma nova execução até que ele seja reativado.',
+      )
+    ) {
+      return
+    }
+
+    const treinoId = parseId(treinoIdParam)
+    if (treinoId === null) {
+      setWorkoutStatusError('O identificador do treino é inválido.')
+      return
+    }
+
+    const novoStatusAtivo = !treino.ativo
+    const request: TreinoUpdateRequest = {
+      nome: treino.nome,
+      descricao: treino.descricao,
+      ativo: novoStatusAtivo,
+    }
+
+    setIsUpdatingWorkoutStatus(true)
+    setWorkoutStatusError(null)
+    setWorkoutSuccessMessage(null)
+
+    try {
+      const updatedWorkout = await atualizarTreino(treinoId, request)
+      setTreino(updatedWorkout)
+      setWorkoutSuccessMessage(
+        novoStatusAtivo
+          ? 'Treino ativado com sucesso.'
+          : 'Treino desativado com sucesso.',
+      )
+    } catch (error: unknown) {
+      setWorkoutStatusError(getErrorMessage(error))
+    } finally {
+      setIsUpdatingWorkoutStatus(false)
     }
   }
 
@@ -632,7 +714,7 @@ function PersonalTreinoPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (isSubmitting) {
+    if (isSubmitting || isUpdatingWorkoutStatus) {
       return
     }
 
@@ -736,7 +818,13 @@ function PersonalTreinoPage() {
               </p>
             )}
 
-            {isWorkoutEditing ? (
+            {workoutStatusError && (
+              <p className={styles.workoutStatusError} role="alert">
+                {workoutStatusError}
+              </p>
+            )}
+
+            {isWorkoutEditing && (
               <form
                 className={styles.workoutEditForm}
                 onSubmit={handleWorkoutSubmit}
@@ -791,8 +879,10 @@ function PersonalTreinoPage() {
                   </button>
                 </div>
               </form>
-            ) : (
-              <div className={styles.workoutHeaderActions}>
+            )}
+
+            <div className={styles.workoutHeaderActions}>
+              {!isWorkoutEditing && (
                 <button
                   className={styles.editWorkoutButton}
                   type="button"
@@ -804,13 +894,45 @@ function PersonalTreinoPage() {
                     removingId !== null ||
                     reorderItems !== null ||
                     isSubmitting ||
+                    isUpdatingWorkoutStatus ||
                     mutationRefreshError !== null
                   }
                 >
                   Editar treino
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                className={
+                  treino.ativo
+                    ? styles.deactivateWorkoutButton
+                    : styles.activateWorkoutButton
+                }
+                type="button"
+                onClick={() => void handleWorkoutStatusUpdate()}
+                disabled={
+                  isUpdatingWorkoutStatus ||
+                  isWorkoutEditing ||
+                  isWorkoutSaving ||
+                  isFormOpen ||
+                  isSubmitting ||
+                  editingId !== null ||
+                  savingId !== null ||
+                  removingId !== null ||
+                  reorderItems !== null ||
+                  isSavingOrder ||
+                  isReloadingOrder ||
+                  mutationRefreshError !== null
+                }
+              >
+                {isUpdatingWorkoutStatus
+                  ? treino.ativo
+                    ? 'Desativando...'
+                    : 'Ativando...'
+                  : treino.ativo
+                    ? 'Desativar treino'
+                    : 'Ativar treino'}
+              </button>
+            </div>
           </header>
 
           <section className={styles.prescription} aria-labelledby="exercises-title">
@@ -827,6 +949,7 @@ function PersonalTreinoPage() {
                     onClick={iniciarReordenacao}
                     disabled={
                       isWorkoutEditing ||
+                      isUpdatingWorkoutStatus ||
                       exercicios.length < 2 ||
                       savingId !== null ||
                       removingId !== null ||
@@ -841,6 +964,7 @@ function PersonalTreinoPage() {
                     onClick={abrirFormulario}
                     disabled={
                       isWorkoutEditing ||
+                      isUpdatingWorkoutStatus ||
                       savingId !== null ||
                       removingId !== null ||
                       mutationRefreshError !== null
@@ -920,7 +1044,9 @@ function PersonalTreinoPage() {
                         value={exercicioId}
                         onChange={(event) => setExercicioId(event.target.value)}
                         required
-                        disabled={isSubmitting || catalogo === null}
+                        disabled={
+                          isSubmitting || isUpdatingWorkoutStatus || catalogo === null
+                        }
                       >
                         <option value="">Selecione um exercício</option>
                         {exerciciosDisponiveis.map((item) => (
@@ -941,7 +1067,7 @@ function PersonalTreinoPage() {
                         value={ordem}
                         onChange={(event) => setOrdem(event.target.value)}
                         required
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUpdatingWorkoutStatus}
                       />
                     </div>
 
@@ -954,7 +1080,7 @@ function PersonalTreinoPage() {
                         step="1"
                         value={seriesPlanejadas}
                         onChange={(event) => setSeriesPlanejadas(event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUpdatingWorkoutStatus}
                       />
                     </div>
 
@@ -965,7 +1091,7 @@ function PersonalTreinoPage() {
                         type="text"
                         value={repeticoesPlanejadas}
                         onChange={(event) => setRepeticoesPlanejadas(event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUpdatingWorkoutStatus}
                         placeholder="Ex.: 8-12"
                       />
                     </div>
@@ -978,7 +1104,7 @@ function PersonalTreinoPage() {
                         inputMode="decimal"
                         value={cargaPlanejada}
                         onChange={(event) => setCargaPlanejada(event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUpdatingWorkoutStatus}
                         placeholder="Ex.: 12,5"
                       />
                     </div>
@@ -989,7 +1115,7 @@ function PersonalTreinoPage() {
                         id="prescription-notes"
                         value={observacoes}
                         onChange={(event) => setObservacoes(event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUpdatingWorkoutStatus}
                         rows={4}
                       />
                     </div>
@@ -1001,7 +1127,7 @@ function PersonalTreinoPage() {
                     className={styles.cancelButton}
                     type="button"
                     onClick={cancelarFormulario}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isUpdatingWorkoutStatus}
                   >
                     Cancelar
                   </button>
@@ -1010,6 +1136,7 @@ function PersonalTreinoPage() {
                     type="submit"
                     disabled={
                       isSubmitting ||
+                      isUpdatingWorkoutStatus ||
                       isCatalogLoading ||
                       catalogError !== null ||
                       exerciciosDisponiveis.length === 0
@@ -1037,7 +1164,11 @@ function PersonalTreinoPage() {
                       <button
                         type="button"
                         onClick={() => void recarregarDuranteReordenacao()}
-                        disabled={isSavingOrder || isReloadingOrder}
+                        disabled={
+                          isSavingOrder ||
+                          isReloadingOrder ||
+                          isUpdatingWorkoutStatus
+                        }
                       >
                         {isReloadingOrder ? 'Recarregando...' : 'Recarregar prescrição'}
                       </button>
@@ -1061,7 +1192,12 @@ function PersonalTreinoPage() {
                         <button
                           type="button"
                           onClick={() => moverItem(index, -1)}
-                          disabled={index === 0 || isSavingOrder || isReloadingOrder}
+                          disabled={
+                            index === 0 ||
+                            isSavingOrder ||
+                            isReloadingOrder ||
+                            isUpdatingWorkoutStatus
+                          }
                           aria-label={`Subir ${item.exercicioNome}`}
                         >
                           Subir
@@ -1072,7 +1208,8 @@ function PersonalTreinoPage() {
                           disabled={
                             index === reorderItems.length - 1 ||
                             isSavingOrder ||
-                            isReloadingOrder
+                            isReloadingOrder ||
+                            isUpdatingWorkoutStatus
                           }
                           aria-label={`Descer ${item.exercicioNome}`}
                         >
@@ -1088,7 +1225,11 @@ function PersonalTreinoPage() {
                     className={styles.cancelButton}
                     type="button"
                     onClick={cancelarReordenacao}
-                    disabled={isSavingOrder || isReloadingOrder}
+                    disabled={
+                      isSavingOrder ||
+                      isReloadingOrder ||
+                      isUpdatingWorkoutStatus
+                    }
                   >
                     Cancelar
                   </button>
@@ -1097,7 +1238,10 @@ function PersonalTreinoPage() {
                     type="button"
                     onClick={() => void salvarReordenacao()}
                     disabled={
-                      !hasReorderChanges || isSavingOrder || isReloadingOrder
+                      !hasReorderChanges ||
+                      isSavingOrder ||
+                      isReloadingOrder ||
+                      isUpdatingWorkoutStatus
                     }
                   >
                     {isSavingOrder ? 'Salvando ordem...' : 'Salvar ordem'}
@@ -1183,7 +1327,9 @@ function PersonalTreinoPage() {
                                 step="1"
                                 value={editSeries}
                                 onChange={(event) => setEditSeries(event.target.value)}
-                                disabled={savingId === item.id}
+                                disabled={
+                                  savingId === item.id || isUpdatingWorkoutStatus
+                                }
                               />
                             </div>
 
@@ -1196,7 +1342,9 @@ function PersonalTreinoPage() {
                                 type="text"
                                 value={editRepeticoes}
                                 onChange={(event) => setEditRepeticoes(event.target.value)}
-                                disabled={savingId === item.id}
+                                disabled={
+                                  savingId === item.id || isUpdatingWorkoutStatus
+                                }
                               />
                             </div>
 
@@ -1208,7 +1356,9 @@ function PersonalTreinoPage() {
                                 inputMode="decimal"
                                 value={editCarga}
                                 onChange={(event) => setEditCarga(event.target.value)}
-                                disabled={savingId === item.id}
+                                disabled={
+                                  savingId === item.id || isUpdatingWorkoutStatus
+                                }
                               />
                             </div>
 
@@ -1218,7 +1368,9 @@ function PersonalTreinoPage() {
                                 id={`edit-notes-${item.id}`}
                                 value={editObservacoes}
                                 onChange={(event) => setEditObservacoes(event.target.value)}
-                                disabled={savingId === item.id}
+                                disabled={
+                                  savingId === item.id || isUpdatingWorkoutStatus
+                                }
                                 rows={4}
                               />
                             </div>
@@ -1229,14 +1381,14 @@ function PersonalTreinoPage() {
                               className={styles.cancelButton}
                               type="button"
                               onClick={cancelarEdicao}
-                              disabled={savingId === item.id}
+                              disabled={savingId === item.id || isUpdatingWorkoutStatus}
                             >
                               Cancelar
                             </button>
                             <button
                               className={styles.submitButton}
                               type="submit"
-                              disabled={savingId === item.id}
+                              disabled={savingId === item.id || isUpdatingWorkoutStatus}
                             >
                               {savingId === item.id ? 'Salvando...' : 'Salvar'}
                             </button>
@@ -1251,6 +1403,7 @@ function PersonalTreinoPage() {
                             disabled={
                               editingId !== null ||
                               isWorkoutEditing ||
+                              isUpdatingWorkoutStatus ||
                               savingId !== null ||
                               removingId !== null ||
                               mutationRefreshError !== null
@@ -1265,6 +1418,7 @@ function PersonalTreinoPage() {
                             disabled={
                               editingId !== null ||
                               isWorkoutEditing ||
+                              isUpdatingWorkoutStatus ||
                               savingId !== null ||
                               removingId !== null ||
                               mutationRefreshError !== null

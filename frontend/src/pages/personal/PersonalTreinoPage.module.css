@@ -108,13 +108,17 @@
 
 .workoutHeaderActions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--space-3);
   margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
-.editWorkoutButton {
+.editWorkoutButton,
+.activateWorkoutButton,
+.deactivateWorkoutButton {
   min-height: 2.75rem;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-primary-strong);
@@ -126,11 +130,23 @@
   cursor: pointer;
 }
 
-.editWorkoutButton:hover:not(:disabled) {
+.editWorkoutButton:hover:not(:disabled),
+.activateWorkoutButton:hover:not(:disabled) {
   background: var(--color-primary-soft);
 }
 
-.editWorkoutButton:disabled {
+.deactivateWorkoutButton {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.deactivateWorkoutButton:hover:not(:disabled) {
+  background: var(--color-error-soft);
+}
+
+.editWorkoutButton:disabled,
+.activateWorkoutButton:disabled,
+.deactivateWorkoutButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -142,6 +158,16 @@
   border-radius: var(--radius-md);
   background: var(--color-primary-soft);
   color: var(--color-success);
+  font-weight: 700;
+}
+
+.workoutStatusError {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: var(--color-error-soft);
+  color: var(--color-error);
   font-weight: 700;
 }
 
@@ -329,6 +355,8 @@
 .removeButton:focus-visible,
 .reorderButton:focus-visible,
 .editWorkoutButton:focus-visible,
+.activateWorkoutButton:focus-visible,
+.deactivateWorkoutButton:focus-visible,
 .workoutEditFields input:focus-visible,
 .workoutEditFields textarea:focus-visible,
 .moveActions button:focus-visible,
@@ -707,7 +735,9 @@
     width: 100%;
   }
 
-  .editWorkoutButton {
+  .editWorkoutButton,
+  .activateWorkoutButton,
+  .deactivateWorkoutButton {
     width: 100%;
   }
 
