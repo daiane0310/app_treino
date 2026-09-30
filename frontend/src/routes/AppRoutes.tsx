@@ -3,7 +3,10 @@ import PageLoader from '../components/feedback/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import PersonalLayout from '../layouts/PersonalLayout'
 import AdminPlaceholderPage from '../pages/AdminPlaceholderPage'
-import AlunoPlaceholderPage from '../pages/aluno/AlunoPlaceholderPage'
+import AlunoLayout from '../layouts/AlunoLayout'
+import AlunoTreinosPage from '../pages/aluno/AlunoTreinosPage'
+import AlunoTreinoPage from '../pages/aluno/AlunoTreinoPage'
+import AlunoExecucaoPage from '../pages/aluno/AlunoExecucaoPage'
 import LoginPage from '../pages/auth/LoginPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
 import NotFoundPage from '../pages/errors/NotFoundPage'
@@ -55,7 +58,11 @@ function AppRoutes() {
           </Route>
         </Route>
         <Route element={<RoleRoute roles={['ALUNO']} />}>
-          <Route path="/aluno" element={<AlunoPlaceholderPage />} />
+          <Route path="/aluno" element={<AlunoLayout />}>
+            <Route index element={<AlunoTreinosPage />} />
+            <Route path="treinos/:treinoId" element={<AlunoTreinoPage />} />
+            <Route path="execucoes/:execucaoId" element={<AlunoExecucaoPage />} />
+          </Route>
         </Route>
         <Route element={<RoleRoute roles={['ADMIN']} />}>
           <Route path="/admin" element={<AdminPlaceholderPage />} />

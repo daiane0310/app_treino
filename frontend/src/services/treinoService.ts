@@ -5,6 +5,11 @@ import type {
 } from '../types/treino'
 import { api } from './api'
 
+export async function getMeusTreinos(): Promise<TreinoResponse[]> {
+  const response = await api.get<TreinoResponse[]>('/alunos/me/treinos')
+  return response.data
+}
+
 export async function getTreinosDoAluno(
   alunoId: number,
 ): Promise<TreinoResponse[]> {
