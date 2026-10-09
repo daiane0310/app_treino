@@ -1,3 +1,5 @@
+import SeriesEditor from '../../components/series/SeriesEditor'
+import { emptySerie, prescriptionDrafts, seriesRequest, type SerieDraft } from '../../components/series/seriesUtils'
 import axios from 'axios'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -77,14 +79,10 @@ function PersonalTreinoPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [exercicioId, setExercicioId] = useState('')
   const [ordem, setOrdem] = useState('1')
-  const [seriesPlanejadas, setSeriesPlanejadas] = useState('')
-  const [repeticoesPlanejadas, setRepeticoesPlanejadas] = useState('')
-  const [cargaPlanejada, setCargaPlanejada] = useState('')
+  const [seriesDraft, setSeriesDraft] = useState<SerieDraft[]>([emptySerie()])
+  const [editSeriesDraft, setEditSeriesDraft] = useState<SerieDraft[]>([])
   const [observacoes, setObservacoes] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editSeries, setEditSeries] = useState('')
-  const [editRepeticoes, setEditRepeticoes] = useState('')
-  const [editCarga, setEditCarga] = useState('')
   const [editObservacoes, setEditObservacoes] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<number | null>(null)
@@ -198,9 +196,7 @@ function PersonalTreinoPage() {
   function limparFormulario() {
     setExercicioId('')
     setOrdem(String(getProximaOrdem()))
-    setSeriesPlanejadas('')
-    setRepeticoesPlanejadas('')
-    setCargaPlanejada('')
+    setSeriesDraft([emptySerie()])
     setObservacoes('')
     setFormError(null)
   }
@@ -242,9 +238,7 @@ function PersonalTreinoPage() {
     setIsFormOpen(false)
     setFormError(null)
     setEditingId(item.id)
-    setEditSeries(item.seriesPlanejadas?.toString() ?? '')
-    setEditRepeticoes(item.repeticoesPlanejadas ?? '')
-    setEditCarga(item.cargaPlanejada?.toString() ?? '')
+    setEditSeriesDraft(prescriptionDrafts(item))
     setEditObservacoes(item.observacoes ?? '')
     setEditError(null)
     setActionError(null)
@@ -259,44 +253,19 @@ function PersonalTreinoPage() {
   function criarUpdateRequest(
     item: TreinoExercicioResponse,
   ): TreinoExercicioUpdateRequest | null {
-    let parsedSeries: number | null = null
-    if (editSeries !== '') {
-      parsedSeries = parsePositiveInteger(editSeries)
-      if (parsedSeries === null) {
-        setEditError('As séries devem ser um número inteiro maior que zero.')
-        return null
+    try {
+      const series = seriesRequest(editSeriesDraft)
+      return {
+        ordem: item.ordem,
+        seriesPrescritas: series,
+        seriesPlanejadas: series.length,
+        repeticoesPlanejadas: null,
+        cargaPlanejada: null,
+        observacoes: normalizarTextoOpcional(editObservacoes),
       }
-    }
-
-    const repeticoes = normalizarTextoOpcional(editRepeticoes)
-    if (editRepeticoes !== '' && repeticoes === null) {
-      setEditError('As repetições não podem conter apenas espaços.')
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Confira os valores das séries.')
       return null
-    }
-
-    let parsedCarga: number | null = null
-    const carga = editCarga.trim()
-    if (carga) {
-      if (!/^\d+(?:[.,]\d{1,2})?$/.test(carga)) {
-        setEditError(
-          'A carga deve ser positiva ou zero e ter no máximo duas casas decimais.',
-        )
-        return null
-      }
-
-      parsedCarga = Number(carga.replace(',', '.'))
-      if (!Number.isFinite(parsedCarga) || parsedCarga < 0) {
-        setEditError('Informe uma carga válida.')
-        return null
-      }
-    }
-
-    return {
-      ordem: item.ordem,
-      seriesPlanejadas: parsedSeries,
-      repeticoesPlanejadas: repeticoes,
-      cargaPlanejada: parsedCarga,
-      observacoes: normalizarTextoOpcional(editObservacoes),
     }
   }
 
@@ -671,43 +640,20 @@ function PersonalTreinoPage() {
       return null
     }
 
-    let parsedSeries: number | null = null
-    if (seriesPlanejadas !== '') {
-      parsedSeries = parsePositiveInteger(seriesPlanejadas)
-      if (parsedSeries === null) {
-        setFormError('As séries devem ser um número inteiro maior que zero.')
-        return null
+    try {
+      const series = seriesRequest(seriesDraft)
+      return {
+        exercicioId: parsedExercicioId,
+        ordem: parsedOrdem,
+        seriesPrescritas: series,
+        seriesPlanejadas: series.length,
+        repeticoesPlanejadas: null,
+        cargaPlanejada: null,
+        observacoes: normalizarTextoOpcional(observacoes),
       }
-    }
-
-    const repeticoes = normalizarTextoOpcional(repeticoesPlanejadas)
-    if (repeticoesPlanejadas !== '' && repeticoes === null) {
-      setFormError('As repetições não podem conter apenas espaços.')
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Confira os valores das séries.')
       return null
-    }
-
-    let parsedCarga: number | null = null
-    const carga = cargaPlanejada.trim()
-    if (carga) {
-      if (!/^\d+(?:[.,]\d{1,2})?$/.test(carga)) {
-        setFormError('A carga deve ser positiva ou zero e ter no máximo duas casas decimais.')
-        return null
-      }
-
-      parsedCarga = Number(carga.replace(',', '.'))
-      if (!Number.isFinite(parsedCarga) || parsedCarga < 0) {
-        setFormError('Informe uma carga válida.')
-        return null
-      }
-    }
-
-    return {
-      exercicioId: parsedExercicioId,
-      ordem: parsedOrdem,
-      seriesPlanejadas: parsedSeries,
-      repeticoesPlanejadas: repeticoes,
-      cargaPlanejada: parsedCarga,
-      observacoes: normalizarTextoOpcional(observacoes),
     }
   }
 
@@ -740,9 +686,7 @@ function PersonalTreinoPage() {
       setIsFormOpen(false)
       setExercicioId('')
       setOrdem('1')
-      setSeriesPlanejadas('')
-      setRepeticoesPlanejadas('')
-      setCargaPlanejada('')
+      setSeriesDraft([emptySerie()])
       setObservacoes('')
       setSuccessMessage('Exercício adicionado ao treino.')
     } catch (error: unknown) {
@@ -1071,42 +1015,8 @@ function PersonalTreinoPage() {
                       />
                     </div>
 
-                    <div>
-                      <label htmlFor="prescription-series">Séries</label>
-                      <input
-                        id="prescription-series"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={seriesPlanejadas}
-                        onChange={(event) => setSeriesPlanejadas(event.target.value)}
-                        disabled={isSubmitting || isUpdatingWorkoutStatus}
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="prescription-repetitions">Repetições</label>
-                      <input
-                        id="prescription-repetitions"
-                        type="text"
-                        value={repeticoesPlanejadas}
-                        onChange={(event) => setRepeticoesPlanejadas(event.target.value)}
-                        disabled={isSubmitting || isUpdatingWorkoutStatus}
-                        placeholder="Ex.: 8-12"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="prescription-load">Carga (kg)</label>
-                      <input
-                        id="prescription-load"
-                        type="text"
-                        inputMode="decimal"
-                        value={cargaPlanejada}
-                        onChange={(event) => setCargaPlanejada(event.target.value)}
-                        disabled={isSubmitting || isUpdatingWorkoutStatus}
-                        placeholder="Ex.: 12,5"
-                      />
+                    <div className={styles.fullField}>
+                      <SeriesEditor value={seriesDraft} onChange={setSeriesDraft} disabled={isSubmitting || isUpdatingWorkoutStatus} />
                     </div>
 
                     <div className={styles.fullField}>
@@ -1300,6 +1210,10 @@ function PersonalTreinoPage() {
                         </div>
                       )}
 
+                      {item.formatoPrescricao === 'POR_SERIE' && <ul>
+                        {item.seriesPrescritas.map(serie => <li key={serie.numeroSerie}>Série {serie.numeroSerie}: {serie.repeticoes ?? '—'} reps · {serie.carga === null ? 'carga não informada' : formatCarga(serie.carga)}</li>)}
+                      </ul>}
+                      {(item.repeticoesPlanejadas || item.cargaPlanejada !== null) && <p>Os valores gerais acima são orientações legadas preservadas.</p>}
                       {editingId === item.id ? (
                         <form
                           className={styles.editForm}
@@ -1318,48 +1232,9 @@ function PersonalTreinoPage() {
                           )}
 
                           <div className={styles.formGrid}>
-                            <div>
-                              <label htmlFor={`edit-series-${item.id}`}>Séries</label>
-                              <input
-                                id={`edit-series-${item.id}`}
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={editSeries}
-                                onChange={(event) => setEditSeries(event.target.value)}
-                                disabled={
-                                  savingId === item.id || isUpdatingWorkoutStatus
-                                }
-                              />
-                            </div>
-
-                            <div>
-                              <label htmlFor={`edit-repetitions-${item.id}`}>
-                                Repetições
-                              </label>
-                              <input
-                                id={`edit-repetitions-${item.id}`}
-                                type="text"
-                                value={editRepeticoes}
-                                onChange={(event) => setEditRepeticoes(event.target.value)}
-                                disabled={
-                                  savingId === item.id || isUpdatingWorkoutStatus
-                                }
-                              />
-                            </div>
-
-                            <div>
-                              <label htmlFor={`edit-load-${item.id}`}>Carga (kg)</label>
-                              <input
-                                id={`edit-load-${item.id}`}
-                                type="text"
-                                inputMode="decimal"
-                                value={editCarga}
-                                onChange={(event) => setEditCarga(event.target.value)}
-                                disabled={
-                                  savingId === item.id || isUpdatingWorkoutStatus
-                                }
-                              />
+                            <div className={styles.fullField}>
+                              {(item.repeticoesPlanejadas || item.cargaPlanejada !== null) && <p>Orientação legada preservada: {item.repeticoesPlanejadas ?? 'repetições não informadas'}; carga geral {item.cargaPlanejada ?? 'não informada'}. Os valores por série passam a definir a prescrição.</p>}
+                              <SeriesEditor value={editSeriesDraft} onChange={setEditSeriesDraft} disabled={savingId === item.id || isUpdatingWorkoutStatus} />
                             </div>
 
                             <div className={styles.fullField}>

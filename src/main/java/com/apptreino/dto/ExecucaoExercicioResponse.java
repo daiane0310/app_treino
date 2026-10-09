@@ -6,6 +6,10 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public class ExecucaoExercicioResponse {
+    private final com.apptreino.model.FormatoPrescricao formatoPrescricao;
+    private final java.util.List<SeriePrescritaSnapshotResponse> seriesPrescritasSnapshot;
+    public com.apptreino.model.FormatoPrescricao getFormatoPrescricao() { return formatoPrescricao; }
+    public java.util.List<SeriePrescritaSnapshotResponse> getSeriesPrescritasSnapshot() { return seriesPrescritasSnapshot; }
 
     private final Long id;
     private final Long exercicioIdSnapshot;
@@ -24,6 +28,9 @@ public class ExecucaoExercicioResponse {
             List<ExecucaoSerieResponse> series
     ) {
         this.id = execucaoExercicio.getId();
+        this.formatoPrescricao = execucaoExercicio.getFormatoPrescricao();
+        this.seriesPrescritasSnapshot = execucaoExercicio.getSeriesPrescritasSnapshot().stream()
+                .map(SeriePrescritaSnapshotResponse::new).toList();
         this.exercicioIdSnapshot = execucaoExercicio.getExercicioIdSnapshot();
         this.exercicioNomeSnapshot = execucaoExercicio.getExercicioNomeSnapshot();
         this.ordemPlanejada = execucaoExercicio.getOrdemPlanejada();

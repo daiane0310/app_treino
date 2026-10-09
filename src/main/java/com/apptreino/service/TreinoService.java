@@ -91,7 +91,7 @@ public class TreinoService {
             Authentication authentication
     ) {
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
-        Treino treino = treinoRepository.findById(treinoId)
+        Treino treino = treinoRepository.findByIdForUpdate(treinoId)
                 .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
 
         validarPermissaoDeEdicao(solicitante, treino);
@@ -123,7 +123,7 @@ public class TreinoService {
             throw new AccessDeniedException("Acesso permitido somente para ALUNO");
         }
 
-        return converterParaResponse(treinoRepository.findAllByAlunoId(aluno.getId()));
+        return converterParaResponse(treinoRepository.findAllByAlunoIdAndAtivoTrue(aluno.getId()));
     }
 
     private Usuario buscarUsuarioAutenticado(Authentication authentication) {

@@ -64,7 +64,7 @@ public class ExecucaoTreinoService {
     @Transactional
     public ExecucaoTreinoResponse iniciarExecucao(Long treinoId, Authentication authentication) {
         Usuario aluno = buscarAlunoAutenticado(authentication);
-        Treino treino = treinoRepository.findById(treinoId)
+        Treino treino = treinoRepository.findByIdForUpdate(treinoId)
                 .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
 
         if (!treino.getAluno().getId().equals(aluno.getId())) {
@@ -306,6 +306,7 @@ public class ExecucaoTreinoService {
             if (serie.getNumeroSerie() == null || serie.getNumeroSerie() <= 0) {
                 throw new IllegalArgumentException("Número da série deve ser maior que zero");
             }
+            SeriesPrescritasValidator.validarCarga(serie.getCargaUtilizada());
             if (!numerosSeries.add(serie.getNumeroSerie())) {
                 throw new IllegalArgumentException("Número da série não pode se repetir");
             }

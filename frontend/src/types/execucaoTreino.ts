@@ -24,6 +24,8 @@ export interface ExecucaoSerieResponse {
 }
 
 export interface ExecucaoExercicioResponse {
+  formatoPrescricao: 'LEGADO' | 'POR_SERIE'
+  seriesPrescritasSnapshot: SeriePrescritaSnapshotResponse[]
   id: number
   exercicioIdSnapshot: number
   exercicioNomeSnapshot: string
@@ -35,6 +37,19 @@ export interface ExecucaoExercicioResponse {
   duracaoSegundos: number | null
   observacoesAluno: string | null
   series: ExecucaoSerieResponse[]
+}
+
+export interface SeriePrescritaSnapshotResponse {
+  id: number
+  numeroSerie: number
+  repeticoesPlanejadas: number | null
+  cargaPlanejada: number | null
+}
+
+export interface RegistrarExecucaoExercicioRequest {
+  duracaoSegundos: number | null
+  observacoesAluno: string | null
+  series: Omit<ExecucaoSerieResponse, 'id'>[]
 }
 
 export interface ExecucaoTreinoDetalheResponse extends ExecucaoTreinoResponse {
