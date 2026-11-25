@@ -66,6 +66,9 @@ public class ExecucaoExercicio {
     @Column(name = "observacoes_prescricao", columnDefinition = "TEXT")
     private String observacoesPrescricao;
 
+    @Column(name = "versao_resultados", nullable = false, updatable = false)
+    private long versaoResultados;
+
     @Column(name = "duracao_segundos")
     private Long duracaoSegundos;
 
@@ -91,6 +94,7 @@ public class ExecucaoExercicio {
     }
 
     public void registrarResultado(Long duracaoSegundos, String observacoesAluno) {
+        this.versaoResultados++;
         this.duracaoSegundos = duracaoSegundos;
         this.observacoesAluno = observacoesAluno;
     }
@@ -133,6 +137,10 @@ public class ExecucaoExercicio {
 
     public String getObservacoesPrescricao() {
         return observacoesPrescricao;
+    }
+
+    public long getVersaoResultados() {
+        return versaoResultados;
     }
 
     public Long getDuracaoSegundos() {

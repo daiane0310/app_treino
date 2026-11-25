@@ -1,6 +1,7 @@
+import { isAxiosError } from 'axios'
 import { useRef, useState } from 'react'
 import { parseCarga, parseRepeticoes } from '../../components/series/seriesUtils'
-import { salvarSeries } from '../../services/execucaoTreinoService'
+import { getExecucao, salvarSeries } from '../../services/execucaoTreinoService'
 import type { ExecucaoExercicioResponse, ExecucaoSerieResponse } from '../../types/execucaoTreino'
 import { alunoError } from './alunoUtils'
 import styles from './Aluno.module.css'
@@ -19,14 +20,18 @@ function initialRows(item: ExecucaoExercicioResponse): Row[] {
   })
 }
 
-export default function ExecucaoSeriesForm({ item, execucaoId, editable }: { item: ExecucaoExercicioResponse; execucaoId: number; editable: boolean }) {
+export default function ExecucaoSeriesForm({ item: initialItem, execucaoId, editable }: { item: ExecucaoExercicioResponse; execucaoId: number; editable: boolean }) {
+  const [item, setItem] = useState(initialItem)
+  const [conflict, setConflict] = useState(false)
+  const [sessionClosed, setSessionClosed] = useState(false)
+  const canEdit = editable && !sessionClosed
   const [rows, setRows] = useState(() => initialRows(item))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const locked = useRef(false)
   async function save() {
-    if (locked.current || !editable) return
+    if (locked.current || !canEdit || conflict) return
     locked.current = true
     setBusy(true)
     setError(null)
@@ -40,22 +45,51 @@ export default function ExecucaoSeriesForm({ item, execucaoId, editable }: { ite
         concluida: row.original?.concluida ?? false,
       }))
       const result = await salvarSeries(execucaoId, item.id, {
+        versaoEsperada: item.versaoResultados,
         duracaoSegundos: item.duracaoSegundos,
         observacoesAluno: item.observacoesAluno,
         series,
       })
+      setItem(result)
       setRows(initialRows(result))
       setMessage('Séries salvas com sucesso.')
     } catch (err: unknown) {
-      setError(err instanceof Error && !('isAxiosError' in err) ? err.message : alunoError(err))
+      if (isAxiosError(err) && err.response?.status === 409) {
+        setConflict(true)
+      }
+      setError(err instanceof Error && !isAxiosError(err) ? err.message : alunoError(err))
     } finally { locked.current = false; setBusy(false) }
   }
+  async function reloadResults() {
+    if (locked.current) return
+    locked.current = true
+    setBusy(true)
+    setError(null)
+    try {
+      const execution = await getExecucao(execucaoId)
+      const latest = execution.exercicios.find(exercise => exercise.id === item.id)
+      if (!latest) throw new Error('O exercício não foi encontrado nesta execução.')
+      setItem(latest)
+      setRows(initialRows(latest))
+      setSessionClosed(execution.status !== 'EM_ANDAMENTO')
+      setConflict(false)
+      setMessage(execution.status === 'EM_ANDAMENTO'
+        ? 'Resultados atualizados.'
+        : 'Resultados atualizados. A execução foi encerrada.')
+    } catch (err: unknown) {
+      setError(err instanceof Error && !isAxiosError(err) ? err.message : alunoError(err))
+    } finally {
+      locked.current = false
+      setBusy(false)
+    }
+  }
+
   return <article className={styles.card}>
     <h3>{item.ordemPlanejada}. {item.exercicioNomeSnapshot}</h3>
     {item.observacoesPrescricao && <p className={styles.text}>{item.observacoesPrescricao}</p>}
     {(item.formatoPrescricao === 'LEGADO' || item.repeticoesPlanejadas || item.cargaPlanejada !== null) && <p>Orientação legada preservada: {item.seriesPlanejadas ?? 'quantidade não informada'} séries; {item.repeticoesPlanejadas ?? 'repetições não informadas'}; carga geral {item.cargaPlanejada === null ? 'não informada' : `${item.cargaPlanejada} kg`}. Faixas de repetições não foram convertidas.</p>}
     <form onSubmit={event => { event.preventDefault(); void save() }}>
-      <fieldset className={seriesStyles.editor} disabled={busy || !editable}>
+      <fieldset className={seriesStyles.editor} disabled={busy || !canEdit}>
         <legend>Prescrito e realizado</legend>
         {rows.map((row, index) => {
           const planned = item.seriesPrescritasSnapshot.find(serie => serie.numeroSerie === row.numeroSerie)
@@ -67,11 +101,17 @@ export default function ExecucaoSeriesForm({ item, execucaoId, editable }: { ite
           </div>
         })}
         {!rows.length && <p>A quantidade de séries não foi informada neste snapshot legado. Adicione as séries que realizou.</p>}
-        {editable && item.formatoPrescricao === 'LEGADO' && <button type="button" className={styles.secondary} onClick={() => setRows([...rows, { numeroSerie: Math.max(0, ...rows.map(row => row.numeroSerie)) + 1, repeticoes: '', carga: '' }])}>Adicionar série realizada</button>}
-        {editable && <button className={styles.button} disabled={!rows.length} type="submit">{busy ? 'Salvando...' : 'Salvar séries'}</button>}
+        {canEdit && item.formatoPrescricao === 'LEGADO' && <button type="button" className={styles.secondary} onClick={() => setRows([...rows, { numeroSerie: Math.max(0, ...rows.map(row => row.numeroSerie)) + 1, repeticoes: '', carga: '' }])}>Adicionar série realizada</button>}
+        {canEdit && <button className={styles.button} disabled={!rows.length || conflict} type="submit">{busy ? 'Salvando...' : 'Salvar séries'}</button>}
       </fieldset>
     </form>
     {message && <p role="status">{message}</p>}
+    {conflict && <div role="status">
+      <p>O salvamento entrou em conflito com o estado atual da execução. Seus valores digitados foram mantidos. Copie o que quiser reaproveitar antes de recarregar.</p>
+      <button className={styles.secondary} disabled={busy} type="button" onClick={() => void reloadResults()}>
+        Descartar rascunho e recarregar resultados
+      </button>
+    </div>}
     {error && <p className={styles.error} role="alert">{error}</p>}
   </article>
 }

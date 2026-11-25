@@ -24,6 +24,7 @@ export interface ExecucaoSerieResponse {
 }
 
 export interface ExecucaoExercicioResponse {
+  versaoResultados: number
   formatoPrescricao: 'LEGADO' | 'POR_SERIE'
   seriesPrescritasSnapshot: SeriePrescritaSnapshotResponse[]
   id: number
@@ -47,6 +48,7 @@ export interface SeriePrescritaSnapshotResponse {
 }
 
 export interface RegistrarExecucaoExercicioRequest {
+  versaoEsperada: number
   duracaoSegundos: number | null
   observacoesAluno: string | null
   series: Omit<ExecucaoSerieResponse, 'id'>[]

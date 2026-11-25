@@ -34,7 +34,7 @@ Execuções anteriores não são reconstruídas usando a prescrição atual. A i
 
 Criação/edição/remoção/reordenação de prescrição e início de execução usam o lock pessimista do treino. Edição de nome/status do treino também participa desse lock. Toda a criação de sessão, exercícios e snapshots ocorre na mesma transação. Snapshots não têm FK para a série prescrita atual, não possuem setters e suas colunas de valores não são atualizáveis pelo ORM.
 
-A troca completa de resultados continua sem controle de versão entre dispositivos: a última escrita pode substituir outra edição. O bloqueio de clique da interface não substitui esse controle. Essa limitação não permite alterar snapshots.
+A V4 adiciona a versão dos resultados por exercício de execução, com valor inicial 0 para registros existentes e novos. O GET e o PUT retornam `versaoResultados`. O PUT exige `versaoEsperada` e retorna 400 se o valor estiver ausente ou for negativo. Uma versão desatualizada retorna 409 e preserva os resultados já salvos. Uma gravação bem-sucedida incrementa a versão na mesma transação da substituição das séries. O formulário mantém o rascunho após conflito e só aplica os resultados atuais quando o aluno escolhe descartá-lo e recarregar. Clientes que gravam resultados precisam ser atualizados junto com o backend.
 
 GET `/alunos/me/treinos` retorna somente ativos. O PERSONAL mantém a listagem anterior. `/aluno` lista sessões EM_ANDAMENTO separadamente via `/alunos/me/execucoes`, inclusive para treinos desativados. As permissões e o bloqueio de novo início inativo são preservados.
 
@@ -50,3 +50,9 @@ A cadeia `ExecucaoSerie → ExecucaoExercicio → ExecucaoTreino → aluno` iden
 - Salvar várias séries, editar uma, recarregar e verificar as demais.
 - Desativar treino com sessão aberta; retomar pelo painel de sessões.
 - Validar concorrência real de início/edição com duas conexões e permissões entre alunos.
+
+
+## Testes da versão de resultados
+
+- `mvn test` executa os testes unitários. Para incluir `VersaoResultadosPostgresTest`, defina `APP_TREINO_TEST_PG_PORT` com a porta de um cluster PostgreSQL descartável em `127.0.0.1`, com o banco vazio `app_treino_versao_teste` e o usuário local `versao_test` sem senha. O teste prepara V1–V3 e dados sintéticos, aplica a V4 e verifica duas gravações concorrentes.
+- Em `frontend`, instale as dependências e o Chromium com `npx playwright install chromium`, depois rode `npm run test:browser`. Para usar um Chromium já instalado, informe o caminho em `PLAYWRIGHT_CHROMIUM_EXECUTABLE`. O teste de navegador usa respostas HTTP simuladas.

@@ -65,15 +65,18 @@ class ExecucaoSeriesServiceTest {
         var execucao = new ExecucaoTreino(treino, aluno, Instant.now());
         var exercicio = new ExecucaoExercicio(execucao, prescricao);
         treino.atualizar("Treino A", null, false);
-        when(execucoes.findById(20L)).thenReturn(Optional.of(execucao));
+        when(execucoes.findByIdForResultSave(20L)).thenReturn(Optional.of(execucao));
         when(exercicios.findByIdAndExecucaoTreinoId(30L, 20L)).thenReturn(Optional.of(exercicio));
         var primeira = new ExecucaoSerieRequest();
         primeira.setNumeroSerie(1); primeira.setRepeticoes(10); primeira.setCargaUtilizada(new BigDecimal("27.5"));
         var segunda = new ExecucaoSerieRequest();
         segunda.setNumeroSerie(2); segunda.setRepeticoes(0); segunda.setCargaUtilizada(null);
         var request = new RegistrarExecucaoExercicioRequest();
+        request.setVersaoEsperada(0L);
         request.setSeries(List.of(primeira, segunda));
-        service.registrarExecucaoExercicio(20L, 30L, request, auth);
+        when(exercicios.avancarVersaoResultados(30L, 0L)).thenReturn(1);
+        var response = service.registrarExecucaoExercicio(20L, 30L, request, auth);
+        assertEquals(1L, response.getVersaoResultados());
         verify(series).saveAllAndFlush(argThat(values -> {
             var iterator = values.iterator();
             var first = iterator.next(); var second = iterator.next();
@@ -81,5 +84,48 @@ class ExecucaoSeriesServiceTest {
         }));
         assertEquals(12, exercicio.getSeriesPrescritasSnapshot().getFirst().getRepeticoesPlanejadas());
         assertEquals(new BigDecimal("25"), exercicio.getSeriesPrescritasSnapshot().getFirst().getCargaPlanejada());
+    }
+
+    @Test void versaoAusenteImpedeQualquerEscrita() {
+        prepararExercicio();
+        var request = new RegistrarExecucaoExercicioRequest();
+        assertThrows(IllegalArgumentException.class,
+                () -> service.registrarExecucaoExercicio(20L, 30L, request, auth));
+        verify(exercicios, never()).avancarVersaoResultados(anyLong(), anyLong());
+        verifyNoInteractions(series);
+    }
+
+    @Test void versaoDesatualizadaPreservaResultados() {
+        var exercicio = prepararExercicio();
+        exercicio.registrarResultado(10L, "existente");
+        var request = new RegistrarExecucaoExercicioRequest();
+        request.setVersaoEsperada(0L);
+        assertThrows(IllegalStateException.class,
+                () -> service.registrarExecucaoExercicio(20L, 30L, request, auth));
+        assertEquals(1L, exercicio.getVersaoResultados());
+        assertEquals("existente", exercicio.getObservacoesAluno());
+        verify(exercicios, never()).avancarVersaoResultados(anyLong(), anyLong());
+        verifyNoInteractions(series);
+    }
+
+    @Test void versaoAlteradaEntreLeituraEAtualizacaoImpedeSubstituicao() {
+        var exercicio = prepararExercicio();
+        var request = new RegistrarExecucaoExercicioRequest();
+        request.setVersaoEsperada(0L);
+        when(exercicios.avancarVersaoResultados(30L, 0L)).thenReturn(0);
+        assertThrows(IllegalStateException.class,
+                () -> service.registrarExecucaoExercicio(20L, 30L, request, auth));
+        assertEquals(0L, exercicio.getVersaoResultados());
+        verifyNoInteractions(series);
+    }
+
+    private ExecucaoExercicio prepararExercicio() {
+        var prescricao = new TreinoExercicio(treino, new Exercicio("Supino", null, true),
+                1, null, null, null, null);
+        var sessao = new ExecucaoTreino(treino, aluno, Instant.now());
+        var exercicio = new ExecucaoExercicio(sessao, prescricao);
+        when(execucoes.findByIdForResultSave(20L)).thenReturn(Optional.of(sessao));
+        when(exercicios.findByIdAndExecucaoTreinoId(30L, 20L)).thenReturn(Optional.of(exercicio));
+        return exercicio;
     }
 }
