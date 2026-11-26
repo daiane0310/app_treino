@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { isAxiosError } from 'axios'
+import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useBackendAvailability } from '../../hooks/useBackendAvailability'
 import { getHomePath } from '../../routes/routeUtils'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import styles from './LoginPage.module.css'
@@ -8,16 +10,19 @@ import styles from './LoginPage.module.css'
 function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { availability, retry, markUnavailable } = useBackendAvailability()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submissionInFlight = useRef(false)
+  const ready = availability === 'ready'
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (isSubmitting) {
+    if (!ready || submissionInFlight.current) {
       return
     }
 
@@ -30,14 +35,27 @@ function LoginPage() {
 
     setEmail(normalizedEmail)
     setErrorMessage(null)
+    submissionInFlight.current = true
     setIsSubmitting(true)
 
     try {
       const authenticatedUser = await login(normalizedEmail, senha)
       navigate(getHomePath(authenticatedUser.tipo), { replace: true })
     } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        const status = error.response?.status
+        if (status === 401) {
+          setErrorMessage('E-mail ou senha inválidos.')
+          return
+        }
+        if (status === undefined || status === 502 || status === 503 || status === 504) {
+          markUnavailable()
+          return
+        }
+      }
       setErrorMessage(getErrorMessage(error))
     } finally {
+      submissionInFlight.current = false
       setIsSubmitting(false)
     }
   }
@@ -101,6 +119,21 @@ function LoginPage() {
             </div>
           </div>
 
+          {availability === 'starting' && (
+            <p className={styles.availabilityMessage} role="status">
+              Estamos iniciando o servidor. Você já pode preencher seu e-mail e senha.
+            </p>
+          )}
+
+          {availability === 'unavailable' && (
+            <div className={styles.availabilityMessage}>
+              <p role="status">O servidor não respondeu a tempo ou está indisponível.</p>
+              <button className={styles.retryButton} type="button" onClick={retry}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
           {errorMessage && (
             <p id="login-error" className={styles.error} role="alert">
               {errorMessage}
@@ -110,7 +143,7 @@ function LoginPage() {
           <button
             className={styles.submitButton}
             type="submit"
-            disabled={isSubmitting}
+            disabled={!ready || isSubmitting}
           >
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>
