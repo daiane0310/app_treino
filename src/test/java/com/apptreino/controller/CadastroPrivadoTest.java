@@ -15,12 +15,14 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -64,6 +66,27 @@ class CadastroPrivadoTest {
                 .andExpect(jsonPath("$.senha").doesNotExist());
         verify(usuarios).save(argThat(usuario -> usuario.getTipo() == TipoUsuario.ALUNO
                 && !usuario.getSenha().equals("senha-sintetica")));
+    }
+
+    @Test
+    void permitePreflightDoFrontendConfigurado() throws Exception {
+        mvc.perform(options("/usuarios")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"));
+        verifyNoInteractions(usuarios);
+    }
+
+    @Test
+    void rejeitaPreflightDeOrigemNaoConfigurada() throws Exception {
+        mvc.perform(options("/usuarios")
+                        .header(HttpHeaders.ORIGIN, "https://outra-origem.example.test")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+        verifyNoInteractions(usuarios);
     }
 
     private String token(TipoUsuario tipo) {

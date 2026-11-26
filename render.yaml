@@ -7,8 +7,6 @@ services:
     healthCheckPath: /
     autoDeployTrigger: "off"
     envVars:
-      - key: SERVER_PORT
-        value: "10000"
       - key: DB_URL
         sync: false
       - key: DB_USERNAME
