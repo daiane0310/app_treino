@@ -1,0 +1,10 @@
+.editor { display: grid; gap: var(--space-3); min-width: 0; margin: var(--space-4) 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.editor legend { font-weight: 700; }
+.editor p { margin: 0; color: var(--color-text-muted); }
+.row { display: grid; grid-template-columns: minmax(4rem, .6fr) repeat(2, minmax(0, 1fr)); align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.row label { display: grid; gap: var(--space-2); font-size: var(--font-size-sm); min-width: 0; }
+.editor input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); padding: var(--space-2); font: inherit; }
+.editor input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.reference { grid-column: 1 / -1; font-size: var(--font-size-sm); }
+.message { white-space: pre-wrap; }
+@media (max-width: 30rem) { .row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row > strong { grid-column: 1 / -1; } }

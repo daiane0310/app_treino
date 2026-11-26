@@ -4,11 +4,20 @@ import java.util.List;
 
 public class RegistrarExecucaoExercicioRequest {
 
+    private Long versaoEsperada;
     private Long duracaoSegundos;
     private String observacoesAluno;
     private List<ExecucaoSerieRequest> series;
 
     public RegistrarExecucaoExercicioRequest() {
+    }
+
+    public Long getVersaoEsperada() {
+        return versaoEsperada;
+    }
+
+    public void setVersaoEsperada(Long versaoEsperada) {
+        this.versaoEsperada = versaoEsperada;
     }
 
     public Long getDuracaoSegundos() {

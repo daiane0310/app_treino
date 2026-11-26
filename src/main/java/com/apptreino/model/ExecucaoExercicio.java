@@ -10,10 +10,28 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 @Entity
 @Table(name = "execucoes_exercicio")
 public class ExecucaoExercicio {
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "formato_prescricao", nullable = false, updatable = false)
+    private FormatoPrescricao formatoPrescricao = FormatoPrescricao.LEGADO;
+
+    @OneToMany(mappedBy = "execucaoExercicio", cascade = CascadeType.PERSIST)
+    @OrderBy("numeroSerie ASC")
+    private List<SeriePrescritaSnapshot> seriesPrescritasSnapshot = new ArrayList<>();
+
+    public FormatoPrescricao getFormatoPrescricao() { return formatoPrescricao; }
+    public List<SeriePrescritaSnapshot> getSeriesPrescritasSnapshot() { return List.copyOf(seriesPrescritasSnapshot); }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,6 +66,9 @@ public class ExecucaoExercicio {
     @Column(name = "observacoes_prescricao", columnDefinition = "TEXT")
     private String observacoesPrescricao;
 
+    @Column(name = "versao_resultados", nullable = false, updatable = false)
+    private long versaoResultados;
+
     @Column(name = "duracao_segundos")
     private Long duracaoSegundos;
 
@@ -58,6 +79,9 @@ public class ExecucaoExercicio {
     }
 
     public ExecucaoExercicio(ExecucaoTreino execucaoTreino, TreinoExercicio prescricao) {
+        this.formatoPrescricao = prescricao.getFormatoPrescricao();
+        prescricao.seriesParaSnapshot().forEach(serie ->
+                this.seriesPrescritasSnapshot.add(new SeriePrescritaSnapshot(this, serie)));
         this.execucaoTreino = execucaoTreino;
         this.treinoExercicio = prescricao;
         this.exercicioIdSnapshot = prescricao.getExercicio().getId();
@@ -70,6 +94,7 @@ public class ExecucaoExercicio {
     }
 
     public void registrarResultado(Long duracaoSegundos, String observacoesAluno) {
+        this.versaoResultados++;
         this.duracaoSegundos = duracaoSegundos;
         this.observacoesAluno = observacoesAluno;
     }
@@ -112,6 +137,10 @@ public class ExecucaoExercicio {
 
     public String getObservacoesPrescricao() {
         return observacoesPrescricao;
+    }
+
+    public long getVersaoResultados() {
+        return versaoResultados;
     }
 
     public Long getDuracaoSegundos() {

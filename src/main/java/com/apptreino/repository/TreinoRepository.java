@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface TreinoRepository extends JpaRepository<Treino, Long> {
 
     List<Treino> findAllByAlunoId(Long alunoId);
+    List<Treino> findAllByAlunoIdAndAtivoTrue(Long alunoId);
 
     List<Treino> findAllByPersonalIdAndAlunoId(Long personalId, Long alunoId);
 

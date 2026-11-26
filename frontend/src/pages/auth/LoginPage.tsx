@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { isAxiosError } from 'axios'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useBackendAvailability } from '../../hooks/useBackendAvailability'
 import { getHomePath } from '../../routes/routeUtils'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import styles from './LoginPage.module.css'
@@ -8,16 +10,24 @@ import styles from './LoginPage.module.css'
 function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { availability, retry, markConnectionLost, canSubmit } = useBackendAvailability()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submission = useRef<AbortController | null>(null)
+  const ready = availability === 'ready'
+  const connectionLost = availability === 'connection-lost'
+
+  useLayoutEffect(() => () => {
+    submission.current?.abort()
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (isSubmitting) {
+    if (!canSubmit() || submission.current) {
       return
     }
 
@@ -30,15 +40,31 @@ function LoginPage() {
 
     setEmail(normalizedEmail)
     setErrorMessage(null)
+    const controller = new AbortController()
+    submission.current = controller
     setIsSubmitting(true)
 
     try {
-      const authenticatedUser = await login(normalizedEmail, senha)
+      const authenticatedUser = await login(normalizedEmail, senha, controller.signal)
+      if (controller.signal.aborted) return
       navigate(getHomePath(authenticatedUser.tipo), { replace: true })
     } catch (error: unknown) {
+      if (controller.signal.aborted) return
+      if (isAxiosError(error)) {
+        const status = error.response?.status
+        if (status === 401) {
+          setErrorMessage('E-mail ou senha inválidos.')
+          return
+        }
+        if (status === undefined || status === 502 || status === 503 || status === 504) {
+          markConnectionLost()
+          return
+        }
+      }
       setErrorMessage(getErrorMessage(error))
     } finally {
-      setIsSubmitting(false)
+      submission.current = null
+      if (!controller.signal.aborted) setIsSubmitting(false)
     }
   }
 
@@ -101,6 +127,25 @@ function LoginPage() {
             </div>
           </div>
 
+          {availability === 'starting' && (
+            <p className={styles.availabilityMessage} role="status">
+              Estamos iniciando o servidor. Você já pode preencher seu e-mail e senha.
+            </p>
+          )}
+
+          {(availability === 'unavailable' || connectionLost) && (
+            <div className={styles.availabilityMessage}>
+              <p role="status">
+                {connectionLost
+                  ? 'A conexão com o servidor foi interrompida durante o login. Tente novamente para verificar a conexão.'
+                  : 'O servidor não respondeu a tempo ou está indisponível.'}
+              </p>
+              <button className={styles.retryButton} type="button" onClick={retry}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
           {errorMessage && (
             <p id="login-error" className={styles.error} role="alert">
               {errorMessage}
@@ -110,7 +155,7 @@ function LoginPage() {
           <button
             className={styles.submitButton}
             type="submit"
-            disabled={isSubmitting}
+            disabled={!ready || isSubmitting}
           >
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>

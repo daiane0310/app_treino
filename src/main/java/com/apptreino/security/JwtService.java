@@ -14,14 +14,21 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    private final String secret;
+    private final SecretKey signingKey;
     private final long expirationMs;
 
     public JwtService(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration-ms}") long expirationMs
     ) {
-        this.secret = secret;
+        if (expirationMs <= 0) {
+            throw new IllegalArgumentException("JWT_EXPIRATION_MS deve ser positivo");
+        }
+        try {
+            this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("JWT_SECRET deve ser Base64 e representar pelo menos 32 bytes");
+        }
         this.expirationMs = expirationMs;
     }
 
@@ -36,19 +43,16 @@ public class JwtService {
                 .claim("tipo", usuario.getTipo().name())
                 .issuedAt(agora)
                 .expiration(expiracao)
-                .signWith(chaveAssinatura(), Jwts.SIG.HS256)
+                .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
     }
 
     public Claims validarEExtrairClaims(String token) {
         return Jwts.parser()
-                .verifyWith(chaveAssinatura())
+                .verifyWith(signingKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
 
-    private SecretKey chaveAssinatura() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
-    }
 }

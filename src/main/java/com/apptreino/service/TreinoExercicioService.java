@@ -61,6 +61,7 @@ public class TreinoExercicioService {
             Authentication authentication
     ) {
         validarRequest(request);
+        SeriesPrescritasValidator.validar(request.getSeriesPrescritas());
 
         Usuario solicitante = buscarUsuarioAutenticado(authentication);
         Treino treino = buscarTreinoComLock(treinoId);
@@ -91,13 +92,14 @@ public class TreinoExercicioService {
                 treino,
                 exercicio,
                 request.getOrdem(),
-                request.getSeriesPlanejadas(),
-                normalizarTextoOpcional(request.getRepeticoesPlanejadas()),
-                request.getCargaPlanejada(),
+                request.getSeriesPrescritas().size(),
+                null,
+                null,
                 request.getObservacoes()
         );
 
         try {
+            treinoExercicio.atualizarSeries(request.getSeriesPrescritas());
             return new TreinoExercicioResponse(
                     treinoExercicioRepository.saveAndFlush(treinoExercicio)
             );
@@ -123,6 +125,14 @@ public class TreinoExercicioService {
 
         validarAdministracaoDoTreino(solicitante, treino);
         validarAtualizacao(request);
+        if (request.getSeriesPrescritas() == null) {
+            SeriesPrescritasValidator.validarQuantidadeMaxima(request.getSeriesPlanejadas());
+        }
+        if (request.getSeriesPrescritas() == null
+                && treinoExercicio.getFormatoPrescricao() == com.apptreino.model.FormatoPrescricao.POR_SERIE) {
+            throw new IllegalArgumentException("Envie a lista completa de séries prescritas");
+        }
+        if (request.getSeriesPrescritas() != null) SeriesPrescritasValidator.validar(request.getSeriesPrescritas());
 
         if (!request.getOrdem().equals(treinoExercicio.getOrdem())
                 && treinoExercicioRepository.existsByTreinoIdAndOrdemAndAtivoTrueAndIdNot(
@@ -135,11 +145,12 @@ public class TreinoExercicioService {
 
         treinoExercicio.atualizarPrescricao(
                 request.getOrdem(),
-                request.getSeriesPlanejadas(),
-                normalizarTextoOpcional(request.getRepeticoesPlanejadas()),
-                request.getCargaPlanejada(),
+                request.getSeriesPrescritas() != null ? request.getSeriesPrescritas().size() : request.getSeriesPlanejadas(),
+                request.getSeriesPrescritas() != null ? treinoExercicio.getRepeticoesPlanejadas() : normalizarTextoOpcional(request.getRepeticoesPlanejadas()),
+                request.getSeriesPrescritas() != null ? treinoExercicio.getCargaPlanejada() : request.getCargaPlanejada(),
                 request.getObservacoes()
         );
+        if (request.getSeriesPrescritas() != null) treinoExercicio.atualizarSeries(request.getSeriesPrescritas());
 
         try {
             return new TreinoExercicioResponse(
@@ -295,6 +306,9 @@ public class TreinoExercicioService {
     }
 
     private void validarRequest(TreinoExercicioCreateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Dados da prescrição são obrigatórios");
+        }
         if (request.getExercicioId() == null) {
             throw new IllegalArgumentException("Exercício é obrigatório");
         }

@@ -24,6 +24,7 @@ import com.apptreino.repository.VinculoPersonalAlunoRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -64,7 +65,7 @@ public class ExecucaoTreinoService {
     @Transactional
     public ExecucaoTreinoResponse iniciarExecucao(Long treinoId, Authentication authentication) {
         Usuario aluno = buscarAlunoAutenticado(authentication);
-        Treino treino = treinoRepository.findById(treinoId)
+        Treino treino = treinoRepository.findByIdForUpdate(treinoId)
                 .orElseThrow(() -> new NoSuchElementException("Treino não encontrado"));
 
         if (!treino.getAluno().getId().equals(aluno.getId())) {
@@ -109,7 +110,9 @@ public class ExecucaoTreinoService {
         }
 
         Usuario aluno = buscarAlunoAutenticado(authentication);
-        ExecucaoTreino execucao = buscarExecucao(execucaoId);
+        // Keep the session open for the duration of this write, even during finalization.
+        ExecucaoTreino execucao = execucaoTreinoRepository.findByIdForResultSave(execucaoId)
+                .orElseThrow(() -> new NoSuchElementException("Execução não encontrada"));
         validarPropriedadeDoAluno(execucao, aluno);
         validarEmAndamento(execucao);
 
@@ -119,7 +122,17 @@ public class ExecucaoTreinoService {
                         "Exercício não pertence à execução informada"
                 ));
 
+        Long versaoEsperada = request.getVersaoEsperada();
+        if (versaoEsperada == null || versaoEsperada < 0) {
+            throw new IllegalArgumentException("Informe uma versão esperada dos resultados válida");
+        }
+
         validarRegistro(request);
+        // Acquire the exercise row before replacing any results. A rollback also undoes the version change.
+        if (execucaoExercicio.getVersaoResultados() != versaoEsperada
+                || execucaoExercicioRepository.avancarVersaoResultados(execucaoExercicioId, versaoEsperada) == 0) {
+            throw new IllegalStateException("Os resultados foram alterados. Recarregue os dados antes de salvar.");
+        }
         List<ExecucaoSerieRequest> seriesRequest = request.getSeries() == null
                 ? List.of()
                 : request.getSeries();
@@ -203,7 +216,7 @@ public class ExecucaoTreinoService {
         return buscarHistoricoDoAluno(alunoId);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public ExecucaoTreinoDetalheResponse detalharExecucao(
             Long execucaoId,
             Authentication authentication
@@ -306,6 +319,7 @@ public class ExecucaoTreinoService {
             if (serie.getNumeroSerie() == null || serie.getNumeroSerie() <= 0) {
                 throw new IllegalArgumentException("Número da série deve ser maior que zero");
             }
+            SeriesPrescritasValidator.validarCarga(serie.getCargaUtilizada());
             if (!numerosSeries.add(serie.getNumeroSerie())) {
                 throw new IllegalArgumentException("Número da série não pode se repetir");
             }

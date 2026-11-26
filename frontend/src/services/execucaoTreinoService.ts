@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { ExecucaoExercicioResponse, RegistrarExecucaoExercicioRequest } from '../types/execucaoTreino'
 import type { ExecucaoTreinoDetalheResponse, ExecucaoTreinoResponse, ExecucaoTreinoResumoResponse } from '../types/execucaoTreino'
 
 export async function getMinhasExecucoes(): Promise<ExecucaoTreinoResumoResponse[]> {
@@ -11,4 +12,8 @@ export async function iniciarExecucao(treinoId: number): Promise<ExecucaoTreinoR
 
 export async function getExecucao(execucaoId: number): Promise<ExecucaoTreinoDetalheResponse> {
   return (await api.get<ExecucaoTreinoDetalheResponse>(`/execucoes/${execucaoId}`)).data
+}
+
+export async function salvarSeries(execucaoId: number, exercicioId: number, request: RegistrarExecucaoExercicioRequest): Promise<ExecucaoExercicioResponse> {
+  return (await api.put<ExecucaoExercicioResponse>(`/execucoes/${execucaoId}/exercicios/${exercicioId}`, request)).data
 }

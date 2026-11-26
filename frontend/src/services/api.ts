@@ -4,17 +4,10 @@ import {
   getStoredToken,
   removeStoredToken,
 } from '../utils/session'
-
-const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
-
-if (!configuredApiUrl) {
-  throw new Error('A variável VITE_API_URL não foi configurada')
-}
-
-const baseURL = configuredApiUrl.replace(/\/+$/, '')
+import { apiBaseUrl } from './apiBaseUrl'
 
 export const api = axios.create({
-  baseURL,
+  baseURL: apiBaseUrl,
   timeout: 10_000,
   withCredentials: false,
 })

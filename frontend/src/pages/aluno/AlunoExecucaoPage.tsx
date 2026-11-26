@@ -5,7 +5,7 @@ import PageLoader from '../../components/feedback/PageLoader'
 import { getExecucao } from '../../services/execucaoTreinoService'
 import type { ExecucaoTreinoDetalheResponse } from '../../types/execucaoTreino'
 import { alunoError, parseAlunoResourceId } from './alunoUtils'
-import PrescricaoList from './PrescricaoList'
+import ExecucaoSeriesForm from './ExecucaoSeriesForm'
 import styles from './Aluno.module.css'
 
 export default function AlunoExecucaoPage() {
@@ -32,10 +32,11 @@ export default function AlunoExecucaoPage() {
       <p className={styles.eyebrow}>Sessão de treino</p><h1>{data.treinoNome}</h1>
       <span className={styles.active}>{labels[data.status]}</span>
       <p>Início: <time dateTime={data.iniciadoEm}>{new Date(data.iniciadoEm).toLocaleString('pt-BR')}</time></p>
-      <p>Esta tela exibe a prescrição preservada no início da sessão. O registro de séries e a finalização estarão disponíveis em uma próxima etapa.</p>
+      <p>Consulte o que foi prescrito e salve o que realizou em cada exercício. A finalização estará disponível em uma próxima etapa.</p>
     </header>
     <section aria-labelledby="session-exercises"><h2 id="session-exercises">Exercícios da sessão</h2>
-      <PrescricaoList itens={data.exercicios.map(item => ({ ...item, exercicioNome: item.exercicioNomeSnapshot, ordem: item.ordemPlanejada, observacoes: item.observacoesPrescricao }))} />
+      {!data.exercicios.length && <p>Nenhum exercício nesta sessão.</p>}
+      <div className={styles.list}>{[...data.exercicios].sort((a, b) => a.ordemPlanejada - b.ordemPlanejada).map(item => <ExecucaoSeriesForm key={`${data.id}-${item.id}`} item={item} execucaoId={data.id} editable={data.status === 'EM_ANDAMENTO'} />)}</div>
     </section>
   </main>
 }

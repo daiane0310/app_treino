@@ -6,8 +6,13 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public class ExecucaoExercicioResponse {
+    private final com.apptreino.model.FormatoPrescricao formatoPrescricao;
+    private final java.util.List<SeriePrescritaSnapshotResponse> seriesPrescritasSnapshot;
+    public com.apptreino.model.FormatoPrescricao getFormatoPrescricao() { return formatoPrescricao; }
+    public java.util.List<SeriePrescritaSnapshotResponse> getSeriesPrescritasSnapshot() { return seriesPrescritasSnapshot; }
 
     private final Long id;
+    private final long versaoResultados;
     private final Long exercicioIdSnapshot;
     private final String exercicioNomeSnapshot;
     private final Integer ordemPlanejada;
@@ -24,6 +29,10 @@ public class ExecucaoExercicioResponse {
             List<ExecucaoSerieResponse> series
     ) {
         this.id = execucaoExercicio.getId();
+        this.versaoResultados = execucaoExercicio.getVersaoResultados();
+        this.formatoPrescricao = execucaoExercicio.getFormatoPrescricao();
+        this.seriesPrescritasSnapshot = execucaoExercicio.getSeriesPrescritasSnapshot().stream()
+                .map(SeriePrescritaSnapshotResponse::new).toList();
         this.exercicioIdSnapshot = execucaoExercicio.getExercicioIdSnapshot();
         this.exercicioNomeSnapshot = execucaoExercicio.getExercicioNomeSnapshot();
         this.ordemPlanejada = execucaoExercicio.getOrdemPlanejada();
@@ -36,6 +45,7 @@ public class ExecucaoExercicioResponse {
         this.series = series;
     }
 
+    public long getVersaoResultados() { return versaoResultados; }
     public Long getId() { return id; }
     public Long getExercicioIdSnapshot() { return exercicioIdSnapshot; }
     public String getExercicioNomeSnapshot() { return exercicioNomeSnapshot; }

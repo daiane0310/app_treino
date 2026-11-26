@@ -5,6 +5,10 @@ import com.apptreino.model.TreinoExercicio;
 import java.math.BigDecimal;
 
 public class TreinoExercicioResponse {
+    private final com.apptreino.model.FormatoPrescricao formatoPrescricao;
+    private final java.util.List<SeriePrescritaResponse> seriesPrescritas;
+    public com.apptreino.model.FormatoPrescricao getFormatoPrescricao() { return formatoPrescricao; }
+    public java.util.List<SeriePrescritaResponse> getSeriesPrescritas() { return seriesPrescritas; }
 
     private final Long id;
     private final Long treinoId;
@@ -17,6 +21,8 @@ public class TreinoExercicioResponse {
     private final String observacoes;
 
     public TreinoExercicioResponse(TreinoExercicio treinoExercicio) {
+        this.formatoPrescricao = treinoExercicio.getFormatoPrescricao();
+        this.seriesPrescritas = treinoExercicio.getSeriesPrescritas().stream().map(SeriePrescritaResponse::new).toList();
         this.id = treinoExercicio.getId();
         this.treinoId = treinoExercicio.getTreino().getId();
         this.exercicioId = treinoExercicio.getExercicio().getId();

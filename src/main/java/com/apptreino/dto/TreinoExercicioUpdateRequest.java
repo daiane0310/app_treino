@@ -3,6 +3,9 @@ package com.apptreino.dto;
 import java.math.BigDecimal;
 
 public class TreinoExercicioUpdateRequest {
+    private java.util.List<SeriePrescritaRequest> seriesPrescritas;
+    public java.util.List<SeriePrescritaRequest> getSeriesPrescritas() { return seriesPrescritas; }
+    public void setSeriesPrescritas(java.util.List<SeriePrescritaRequest> value) { seriesPrescritas = value; }
 
     private Integer ordem;
     private Integer seriesPlanejadas;

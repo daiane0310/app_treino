@@ -32,3 +32,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Environment files can contain backend credentials.
+.env
+.env.*
+!.env.example

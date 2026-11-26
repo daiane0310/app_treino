@@ -10,10 +10,54 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import com.apptreino.dto.SeriePrescritaRequest;
 
 @Entity
 @Table(name = "treino_exercicios")
 public class TreinoExercicio {
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "formato_prescricao", nullable = false)
+    private FormatoPrescricao formatoPrescricao = FormatoPrescricao.LEGADO;
+
+    @OneToMany(mappedBy = "treinoExercicio", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("numeroSerie ASC")
+    private List<SeriePrescrita> seriesPrescritas = new ArrayList<>();
+
+    public FormatoPrescricao getFormatoPrescricao() { return formatoPrescricao; }
+    public List<SeriePrescrita> getSeriesPrescritas() { return List.copyOf(seriesPrescritas); }
+
+    public void atualizarSeries(List<SeriePrescritaRequest> series) {
+        // Reuse numbered rows to avoid unique-constraint collisions during flush.
+        while (seriesPrescritas.size() > series.size()) seriesPrescritas.remove(seriesPrescritas.size() - 1);
+        for (int i = 0; i < series.size(); i++) {
+            var valor = series.get(i);
+            if (i < seriesPrescritas.size()) seriesPrescritas.get(i).atualizar(valor.repeticoes(), valor.carga());
+            else seriesPrescritas.add(new SeriePrescrita(this, valor.numeroSerie(), valor.repeticoes(), valor.carga()));
+        }
+        seriesPlanejadas = series.size();
+        formatoPrescricao = FormatoPrescricao.POR_SERIE;
+    }
+
+    public List<SeriePrescrita> seriesParaSnapshot() {
+        if (formatoPrescricao == FormatoPrescricao.POR_SERIE) return getSeriesPrescritas();
+        // Legacy text (e.g. 10-12) stays in the general snapshot. Never guess repetitions.
+        List<SeriePrescrita> resultado = new ArrayList<>();
+        if (seriesPlanejadas != null && seriesPlanejadas > 0) {
+            for (int numero = 1; numero <= seriesPlanejadas; numero++) {
+                resultado.add(new SeriePrescrita(this, numero, null,
+                        cargaPlanejada != null && cargaPlanejada.signum() >= 0 ? cargaPlanejada : null));
+            }
+        }
+        return resultado;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
