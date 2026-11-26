@@ -27,7 +27,9 @@ O backend executa Flyway ao iniciar. A primeira inicialização com acesso ao Ne
 
 Após autorização, configure **Root Directory** como `frontend`, preset **Vite**, build `npm run build` e saída `dist`. Use um domínio de produção estável e defina `VITE_API_URL` para a URL HTTPS do Render no ambiente **Production** antes do build. O build exige uma URL HTTP(S) absoluta e sem credenciais. O valor é público no JavaScript compilado. Credenciais do banco e segredo JWT pertencem somente ao Render.
 
-Antes de publicar, revise o `frontend/package-lock.json` do Codespaces e versione-o com o `package.json` correspondente para fixar a árvore de dependências.
+Use Node.js **24.x** no projeto Vercel. O repositório determina a versão principal no `package.json` e configura `npm ci --include=dev` para instalar a árvore registrada em `frontend/package-lock.json`. O lockfile v3 foi validado com npm 11, incluindo as dependências de build.
+
+Se já houver um lockfile não rastreado no Codespaces, antes de atualizar o checkout copie o arquivo e o `package.json` correspondente para um diretório novo fora do repositório. Preserve os originais até comparar as cópias. Compare a árvore com o lockfile versionado e, em um diretório descartável, rode `npm ci` e `npm run build` com o par de arquivos que pretende usar. Se quiser adotar a árvore do Codespaces, faça isso em uma revisão separada. O Git pode bloquear a atualização se ela sobrescrever um arquivo local não rastreado.
 
 O `frontend/vercel.json` habilita rotas diretas da SPA e desativa os deploys automáticos do Git. Vincule o projeto e execute o deploy manual de produção pelo Vercel CLI (`vercel --prod`), usando o checkout do commit aprovado e o Root Directory configurado. Evite conectar prévias ao backend de produção. Se for necessário privar também a tela de login e os arquivos estáticos, ative **Deployment Protection** para produção conforme a disponibilidade no plano da Vercel. O acesso aos dados da API é controlado pela autenticação do aplicativo.
 
