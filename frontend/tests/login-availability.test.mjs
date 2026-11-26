@@ -115,7 +115,7 @@ test('rejeita resposta intermediária e preserva os campos enquanto aguarda nova
   assert.equal(await page.locator('#email').inputValue(), credentials.email)
   assert.equal(await page.locator('#senha').inputValue(), credentials.senha)
   assert.equal(await page.getByRole('status').count(), 0)
-  await page.clock.fastForward(90_000)
+  await page.clock.fastForward(180_000)
   assert.equal(checks, 2)
   assert.equal(logins, 0)
 })
@@ -132,6 +132,7 @@ test('cancela a chamada travada, encerra o ciclo no prazo e reinicia apenas sob 
     // Deliberately leave the other requests unresolved.
   })
 
+  const deadline = await page.evaluate(() => Date.now()) + 180_000
   const first = page.waitForRequest('**/api/')
   await openLogin(page)
   await first
@@ -143,11 +144,15 @@ test('cancela a chamada travada, encerra o ciclo no prazo e reinicia apenas sob 
   await page.clock.runFor(5_001)
   await secondCheckStarted.promise
   assert.equal(checks, 2)
-  await page.clock.fastForward(90_000)
+  const now = await page.evaluate(() => Date.now())
+  await page.clock.fastForward(deadline - now - 1)
+  assert.equal(await retry(page).count(), 0)
+  assert.equal(await submit(page).isDisabled(), true)
+  await page.clock.runFor(1)
   await retry(page).waitFor()
   await page.getByRole('status').filter({ hasText: 'O servidor não respondeu a tempo' }).waitFor()
   const countAtDeadline = checks
-  await page.clock.fastForward(90_000)
+  await page.clock.fastForward(180_000)
   assert.equal(checks, countAtDeadline)
   assert.equal(await page.locator('#senha').inputValue(), credentials.senha)
 
@@ -178,7 +183,7 @@ test('cancela a verificação ao desmontar a tela sem recarregar o documento', a
   })
   await page.locator('#email').waitFor({ state: 'detached' })
   await cancelled
-  await page.clock.fastForward(100_000)
+  await page.clock.fastForward(190_000)
   assert.equal(checks, 1)
 })
 
@@ -240,7 +245,7 @@ test('após HTTP 503, cliques sucessivos em tentar novamente iniciam somente um 
   await page.clock.runFor(10)
   await retried
   await page.locator('button[type=submit]:enabled').waitFor()
-  await page.clock.fastForward(100_000)
+  await page.clock.fastForward(190_000)
   assert.equal(checks, 2)
   assert.equal(logins, 1)
   assert.equal(await page.locator('#email').inputValue(), credentials.email)

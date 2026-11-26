@@ -4,7 +4,7 @@ import { isBackendAvailable } from '../services/backendAvailability'
 const MESSAGE_DELAY_MS = 1_500
 const RETRY_INTERVAL_MS = 5_000
 const REQUEST_TIMEOUT_MS = 8_000
-const TOTAL_TIMEOUT_MS = 90_000
+const TOTAL_TIMEOUT_MS = 180_000
 
 type Availability = 'checking' | 'starting' | 'ready' | 'unavailable' | 'connection-lost'
 
