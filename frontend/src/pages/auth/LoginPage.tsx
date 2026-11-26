@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import { useRef, useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useBackendAvailability } from '../../hooks/useBackendAvailability'
@@ -10,19 +10,24 @@ import styles from './LoginPage.module.css'
 function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { availability, retry, markUnavailable } = useBackendAvailability()
+  const { availability, retry, markConnectionLost, canSubmit } = useBackendAvailability()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const submissionInFlight = useRef(false)
+  const submission = useRef<AbortController | null>(null)
   const ready = availability === 'ready'
+  const connectionLost = availability === 'connection-lost'
+
+  useLayoutEffect(() => () => {
+    submission.current?.abort()
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!ready || submissionInFlight.current) {
+    if (!canSubmit() || submission.current) {
       return
     }
 
@@ -35,13 +40,16 @@ function LoginPage() {
 
     setEmail(normalizedEmail)
     setErrorMessage(null)
-    submissionInFlight.current = true
+    const controller = new AbortController()
+    submission.current = controller
     setIsSubmitting(true)
 
     try {
-      const authenticatedUser = await login(normalizedEmail, senha)
+      const authenticatedUser = await login(normalizedEmail, senha, controller.signal)
+      if (controller.signal.aborted) return
       navigate(getHomePath(authenticatedUser.tipo), { replace: true })
     } catch (error: unknown) {
+      if (controller.signal.aborted) return
       if (isAxiosError(error)) {
         const status = error.response?.status
         if (status === 401) {
@@ -49,14 +57,14 @@ function LoginPage() {
           return
         }
         if (status === undefined || status === 502 || status === 503 || status === 504) {
-          markUnavailable()
+          markConnectionLost()
           return
         }
       }
       setErrorMessage(getErrorMessage(error))
     } finally {
-      submissionInFlight.current = false
-      setIsSubmitting(false)
+      submission.current = null
+      if (!controller.signal.aborted) setIsSubmitting(false)
     }
   }
 
@@ -125,9 +133,13 @@ function LoginPage() {
             </p>
           )}
 
-          {availability === 'unavailable' && (
+          {(availability === 'unavailable' || connectionLost) && (
             <div className={styles.availabilityMessage}>
-              <p role="status">O servidor não respondeu a tempo ou está indisponível.</p>
+              <p role="status">
+                {connectionLost
+                  ? 'A conexão com o servidor foi interrompida durante o login. Tente novamente para verificar a conexão.'
+                  : 'O servidor não respondeu a tempo ou está indisponível.'}
+              </p>
               <button className={styles.retryButton} type="button" onClick={retry}>
                 Tentar novamente
               </button>

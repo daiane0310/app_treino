@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { isBackendAvailable } from '../services/backendAvailability'
 
 const MESSAGE_DELAY_MS = 1_500
@@ -6,10 +6,15 @@ const RETRY_INTERVAL_MS = 5_000
 const REQUEST_TIMEOUT_MS = 8_000
 const TOTAL_TIMEOUT_MS = 90_000
 
-type Availability = 'checking' | 'starting' | 'ready' | 'unavailable'
+type Availability = 'checking' | 'starting' | 'ready' | 'unavailable' | 'connection-lost'
 
 export function useBackendAvailability() {
   const [availability, setAvailability] = useState<Availability>('checking')
+  const currentAvailability = useRef<Availability>('checking')
+  const updateAvailability = useCallback((next: Availability) => {
+    currentAvailability.current = next
+    setAvailability(next)
+  }, [])
   const [cycle, setCycle] = useState(0)
 
   useEffect(() => {
@@ -36,36 +41,41 @@ export function useBackendAvailability() {
 
       if (stopped) return
       controller = undefined
-      if (available) {
+      if (available && !request.signal.aborted) {
         stop()
-        setAvailability('ready')
+        updateAvailability('ready')
       } else {
         nextCheck = window.setTimeout(check, RETRY_INTERVAL_MS)
       }
     }
 
     const messageTimeout = window.setTimeout(
-      () => setAvailability('starting'), MESSAGE_DELAY_MS,
+      () => updateAvailability('starting'), MESSAGE_DELAY_MS,
     )
     const totalTimeout = window.setTimeout(() => {
       stop()
-      setAvailability('unavailable')
+      updateAvailability('unavailable')
     }, TOTAL_TIMEOUT_MS)
 
     // A discarded Strict Mode effect can cancel the check before it starts.
     nextCheck = window.setTimeout(check, 0)
     return stop
-  }, [cycle])
+  }, [cycle, updateAvailability])
 
   function retry() {
-    if (availability !== 'unavailable') return
-    setAvailability('checking')
+    if (currentAvailability.current !== 'unavailable'
+        && currentAvailability.current !== 'connection-lost') return
+    updateAvailability('checking')
     setCycle(current => current + 1)
   }
 
-  function markUnavailable() {
-    setAvailability('unavailable')
+  function markConnectionLost() {
+    updateAvailability('connection-lost')
   }
 
-  return { availability, retry, markUnavailable }
+  function canSubmit() {
+    return currentAvailability.current === 'ready'
+  }
+
+  return { availability, retry, markConnectionLost, canSubmit }
 }

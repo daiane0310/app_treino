@@ -22,7 +22,7 @@ interface AuthContextValue {
   usuario: UsuarioMeResponse | null
   isAuthenticated: boolean
   isInitializing: boolean
-  login: (email: string, senha: string) => Promise<UsuarioMeResponse>
+  login: (email: string, senha: string, signal?: AbortSignal) => Promise<UsuarioMeResponse>
   logout: () => void
   restaurarSessao: () => Promise<void>
 }
@@ -45,8 +45,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUsuario(null)
   }, [])
 
-  const login = useCallback(async (email: string, senha: string) => {
-    const response = await requestLogin({ email, senha })
+  const login = useCallback(async (email: string, senha: string, signal?: AbortSignal) => {
+    const response = await requestLogin({ email, senha }, signal)
+    signal?.throwIfAborted()
     const authenticatedUser: UsuarioMeResponse = {
       id: response.id,
       nome: response.nome,

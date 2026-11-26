@@ -145,6 +145,7 @@ test('cancela a chamada travada, encerra o ciclo no prazo e reinicia apenas sob 
   assert.equal(checks, 2)
   await page.clock.fastForward(90_000)
   await retry(page).waitFor()
+  await page.getByRole('status').filter({ hasText: 'O servidor não respondeu a tempo' }).waitFor()
   const countAtDeadline = checks
   await page.clock.fastForward(90_000)
   assert.equal(checks, countAtDeadline)
@@ -198,7 +199,10 @@ test('distingue senha inválida de indisponibilidade e nunca reenvia a senha na 
   assert.equal(await retry(page).count(), 0)
 
   await submit(page).click()
-  await retry(page).waitFor()
+  await page.getByRole('status').filter({ hasText: 'A conexão com o servidor foi interrompida durante o login.' }).waitFor()
+  assert.equal(await submit(page).isDisabled(), true)
+  await page.locator('#senha').press('Enter')
+  assert.equal(logins, 2)
   assert.equal(await page.getByRole('alert').count(), 0)
   assert.equal(await page.locator('#email').getAttribute('aria-invalid'), 'false')
   assert.equal(await page.locator('#senha').inputValue(), credentials.senha)
@@ -208,4 +212,62 @@ test('distingue senha inválida de indisponibilidade e nunca reenvia a senha na 
   await retried
   await page.locator('button[type=submit]:enabled').waitFor()
   assert.equal(logins, 2)
+})
+
+test('após HTTP 503, cliques sucessivos em tentar novamente iniciam somente um GET', async t => {
+  const page = await openPage(t)
+  let checks = 0
+  let logins = 0
+  await page.route(healthPath, route => {
+    checks++
+    return route.fulfill({ body: backendMarker })
+  })
+  await page.route(loginPath, route => {
+    logins++
+    return route.fulfill({ status: 503 })
+  })
+
+  await openLogin(page)
+  await fillLogin(page)
+  await submit(page).click()
+  await page.getByRole('status').filter({ hasText: 'A conexão com o servidor foi interrompida' }).waitFor()
+  const retried = page.waitForResponse('**/api/')
+  await retry(page).evaluate(button => {
+    button.click()
+    button.click()
+    button.form.requestSubmit()
+  })
+  await page.clock.runFor(10)
+  await retried
+  await page.locator('button[type=submit]:enabled').waitFor()
+  await page.clock.fastForward(100_000)
+  assert.equal(checks, 2)
+  assert.equal(logins, 1)
+  assert.equal(await page.locator('#email').inputValue(), credentials.email)
+  assert.equal(await page.locator('#senha').inputValue(), credentials.senha)
+  assert.equal(await page.getByRole('status').count(), 0)
+})
+
+test('sair da tela durante o POST cancela a autenticação pendente', { timeout: 15_000 }, async t => {
+  const page = await openPage(t)
+  await page.route(healthPath, route => route.fulfill({ body: backendMarker }))
+  const started = Promise.withResolvers()
+  await page.route(loginPath, route => started.resolve(route))
+  await openLogin(page)
+  await fillLogin(page)
+  await submit(page).click()
+  const pending = await started.promise
+
+  const cancelled = page.waitForEvent('requestfailed', request => request.url().endsWith('/api/auth/login'))
+  await page.evaluate(() => {
+    history.pushState(null, '', '/403')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
+  await page.locator('#email').waitFor({ state: 'detached' })
+  await cancelled
+  await pending.fulfill({
+    json: { email: credentials.email, id: 1, nome: 'Aluno teste', tipo: 'ALUNO', token: 'token-sintetico' },
+  })
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('app_treino_token')), null)
+  assert.match(page.url(), /\/403$/)
 })
